@@ -22,6 +22,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 from app.agentes.acciones import AgenteAcciones  # noqa: E402
 from app.agentes.puente_mcp import ResultadoLlamada  # noqa: E402
 from app.agentes.traza import Traza  # noqa: E402
+from app.mcp_servers.mcp_drive import sesiones_sugeridas  # noqa: E402
 from app.rag.config import ConfigRAG, fijar_semillas  # noqa: E402
 from app.rag.generador import GeneradorOllama  # noqa: E402
 
@@ -34,8 +35,9 @@ ASIGNATURAS = ['Física', 'Matemáticas II', 'Química', 'Inglés', 'Lengua', 'H
 def notas(**o):
     base = {'Física': 8.5, 'Matemáticas II': 8.5, 'Química': 8.0, 'Inglés': 9.0, 'Lengua': 8.5, 'Historia': 8.0}
     base.update(o)
-    return {'nota_media_bachillerato': 8.4, 'avisos': [], 'materias': [
-        {'asignatura': a, 'nota': n, 'fase': 'acceso', 'ponderacion': 0, 'segunda_lengua': False} for a, n in base.items()]}
+    materias = [{'asignatura': a, 'nota': n, 'fase': 'acceso', 'ponderacion': 0, 'segunda_lengua': False} for a, n in base.items()]
+    # como el servidor real: leer_notas devuelve además el reparto de sesiones calculado en Python
+    return {'nota_media_bachillerato': 8.4, 'avisos': [], 'materias': materias, 'sesiones_sugeridas': sesiones_sugeridas(materias)}
 
 
 def huecos(dias=(2, 3, 4, 5)):

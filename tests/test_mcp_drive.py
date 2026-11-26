@@ -63,6 +63,7 @@ def test_leer_notas_devuelve_json_tipado():
     assert m['Inglés']['segunda_lengua'] is True and m['Matemáticas II']['segunda_lengua'] is False
     assert m['Química']['nota'] is None and m['Química']['ponderacion'] is None
     assert any('Química' in a for a in r['avisos'])
+    assert sum(s['sesiones'] for s in r['sesiones_sugeridas']) == 6 and 'Química' not in [s['asignatura'] for s in r['sesiones_sugeridas']]
 
 
 def test_parsear_hoja_acota_texto_libre_y_rangos():
@@ -105,3 +106,33 @@ def test_guardar_informe_crea_carpeta_y_documento():
     assert not error and r['id'] == 'D1' and estado['carpeta_informes_id'] == 'C1'
     cuerpo_doc = crear.call_args_list[1].kwargs['body']
     assert cuerpo_doc['parents'] == ['C1'] and cuerpo_doc['mimeType'] == 'application/vnd.google-apps.document'
+
+
+# --- sesiones sugeridas (reparto en Python) ---------------------------------------------------------------------------
+
+def _mats(**notas):
+    return [{'asignatura': a, 'nota': n} for a, n in notas.items()]
+
+
+def _reparto(materias):
+    return {r['asignatura']: r['sesiones'] for r in mcp_drive.sesiones_sugeridas(materias)}
+
+
+def test_sesiones_suman_seis_y_la_peor_nota_recibe_mas():
+    r = _reparto(_mats(Fisica=5.0, Matematicas=8.5, Quimica=8.0, Ingles=9.0, Lengua=8.5, Historia=8.0))
+    assert sum(r.values()) == 6 and r['Fisica'] == 4 and max(r, key=r.get) == 'Fisica'
+
+
+def test_cambiar_la_asignatura_floja_cambia_el_reparto():
+    r = _reparto(_mats(Fisica=8.5, Matematicas=8.5, Quimica=8.0, Ingles=9.0, Lengua=8.5, Historia=4.5))
+    assert sum(r.values()) == 6 and r['Historia'] == 5 and r['Quimica'] == 1
+
+
+def test_sesiones_empate_gana_la_peor_nota_y_sin_notas_no_hay_reparto():
+    assert _reparto(_mats(A=7.0, B=7.0, C=7.0, D=7.0, E=7.0, F=7.0)) == {m: 1 for m in 'ABCDEF'}
+    assert mcp_drive.sesiones_sugeridas([]) == [] and mcp_drive.sesiones_sugeridas(_mats(A=None)) == []
+    assert mcp_drive.sesiones_sugeridas(_mats(A=10, B=10)) == []        # todo en 10: nada que reforzar
+
+
+def test_una_sola_materia_no_pasa_del_tope():
+    assert _reparto(_mats(A=6.0)) == {'A': 6}

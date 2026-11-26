@@ -171,3 +171,11 @@ def test_herramienta_desconocida_o_argumentos_no_objeto():
     assert not v('leer_notas', 'texto').ok
     assert not v('leer_notas', {'carpeta': '/'}).ok
     assert v('leer_notas', None).ok
+
+
+def test_los_errores_dicen_al_modelo_como_corregir():
+    # el modelo 4B usaba el hueco entero (4 h) o una fecha sin hueco y no sabía qué cambiar
+    texto = str(eventos([ev(fin='2026-12-02T20:00:00+01:00')]))
+    assert 'dura 240 min' in texto and 'fin = inicio + 60 a 120 min' in texto
+    texto = str(eventos([ev('2026-12-06T16:00:00+01:00', '2026-12-06T17:00:00+01:00')]))
+    assert 'los huecos son: 2026-12-02 16:00-20:00' in texto

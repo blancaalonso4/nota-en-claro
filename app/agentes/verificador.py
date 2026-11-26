@@ -119,13 +119,13 @@ def _eventos(args: dict, r: Resultado, zona: str, ahora: datetime, huecos, dias:
             continue
         minutos = (fin - ini).total_seconds() / 60
         if not MIN_MINUTOS <= minutos <= MAX_MINUTOS:
-            r.error(f'{n}: la sesión debe durar entre {MIN_MINUTOS} y {MAX_MINUTOS} minutos')
+            r.error(f'{n}: dura {minutos:.0f} min y debe durar entre {MIN_MINUTOS} y {MAX_MINUTOS}; no uses el hueco entero: pon el fin = inicio + 60 a 120 min')
         if ini <= ahora:
             r.error(f'{n}: empieza en el pasado')
         if fin > limite:
             r.error(f'{n}: queda fuera de los {dias} días pedidos')
         if not any(h0 <= ini and fin <= h1 for h0, h1 in libres):
-            r.error(f'{n}: no cabe en ningún hueco libre')
+            r.error(f'{n}: no cabe en ningún hueco libre; los huecos son: ' + '; '.join(f'{h0:%Y-%m-%d %H:%M}-{h1:%H:%M}' for h0, h1 in libres[:8]))
         validos.append((ini, fin))
     validos.sort()
     for (a0, a1), (b0, b1) in zip(validos, validos[1:]):

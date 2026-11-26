@@ -5,6 +5,8 @@ Arranque (lo hace el puente MCP): python -m app.mcp_servers.mcp_drive
 """
 from __future__ import annotations
 
+from fractions import Fraction
+
 from mcp.server.fastmcp import FastMCP
 
 from . import comun
@@ -81,6 +83,31 @@ def parsear_hoja(datos: list[list], notas: list[list]) -> dict:
     return {'nota_media_bachillerato': cfb, 'grado': grado, 'materias': materias, 'avisos': avisos}
 
 
+TOTAL_SESIONES = 6      # tope de sesiones de un plan (llamada corta en CPU)
+
+
+def sesiones_sugeridas(materias: list[dict], total: int = TOTAL_SESIONES) -> list[dict]:
+    """Reparte `total` sesiones de estudio entre las asignaturas con nota: cuanto más baja la nota, más sesiones.
+
+    Fórmula: peso = (10 - nota)²; cuota = total · peso / Σ pesos; cada asignatura recibe la parte entera de su cuota y las
+    sesiones que sobran van a las de mayor parte decimal (método del mayor resto; empate → la de peor nota, luego el orden
+    de la hoja). Elevar al cuadrado hace que una nota muy baja pese bastante más que varias notas medianas.
+    Devuelve [{'asignatura', 'sesiones'}] solo con las que reciben alguna, de más a menos sesiones. Sin notas → [].
+    """
+    con_nota = [(i, m) for i, m in enumerate(materias) if isinstance(m.get('nota'), (int, float))]
+    pesos = [Fraction(str(10 - m['nota'])) ** 2 for _, m in con_nota]   # Fraction: sin ruido de coma flotante en los empates
+    suma = sum(pesos)
+    if not con_nota or suma <= 0:
+        return []
+    cuotas = [total * p / suma for p in pesos]
+    sesiones = [int(c) for c in cuotas]       # int() sobre Fraction trunca (cuotas ≥ 0)
+    orden = sorted(range(len(con_nota)), key=lambda k: (-(cuotas[k] - sesiones[k]), con_nota[k][1]['nota'], k))
+    for k in orden[:total - sum(sesiones)]:
+        sesiones[k] += 1
+    res = [{'asignatura': m['asignatura'], 'sesiones': s} for (_, m), s in zip(con_nota, sesiones) if s > 0]
+    return sorted(res, key=lambda r: -r['sesiones'])
+
+
 def _peticion_crear_hoja() -> dict:
     cabecera = ['Asignatura', 'Nota', 'Fase (acceso / admisión)', 'Ponderación (0 / 0,1 / 0,2)', 'Segunda lengua (sí / no)']
     fila = lambda *v: {'values': [{'userEnteredValue': ({'numberValue': x} if isinstance(x, (int, float)) else {'stringValue': x})} for x in v]}
@@ -149,7 +176,8 @@ def construir(api=None, estado_fn=comun.leer_estado, guardar_fn=comun.guardar_es
         rangos = r.get('valueRanges', [])
         datos = rangos[0].get('values', []) if len(rangos) > 0 else []
         notas = rangos[1].get('values', []) if len(rangos) > 1 else []
-        return {**parsear_hoja(datos, notas), 'reintentos': n}
+        hoja = parsear_hoja(datos, notas)
+        return {**hoja, 'sesiones_sugeridas': sesiones_sugeridas(hoja['materias']), 'reintentos': n}
 
     @mcp.tool()
     @convertir_errores

@@ -216,3 +216,21 @@ Prueba hecha a mano por el equipo el 2026-11-26 (**observada**, una vez cada cas
 - **OK con huecos · correo:** el borrador se crea y el envío con botón funciona, pero el texto trae marcadores sin rellenar («[Nombre del orientador]», «[Tu nombre]»).
 - **FALLO · plan de estudio con el calendario real: 0 eventos.** Traza de la sesión, pasos 12-19: el modelo propuso dos veces sesiones que empezaban en el pasado, el verificador las rechazó y el agente se rindió (se agotaron las vueltas).
 - Qué se hace con cada punto: A (plan), B (correo), C, D, E (mejoras de la hoja, la tabla y la calculadora) y F (arranque sin Ollama), en las entradas siguientes, una por arreglo.
+
+## 2026-11-26 · Sesión 6 · A. Plan de estudio: el modelo no escribe fechas
+- **Decisión:** `huecos_libres` devuelve solo huecos que empiezan **después de ahora** (el siguiente cuarto de hora estrictamente posterior) y **numerados**: `id`, `dia` («miércoles 2 dic»), `inicio_hora`, `fin_hora`, `minutos` (más las fechas ISO, que solo usa Python). El modelo recibe «1: miércoles 2 dic, 16:00-20:00 (240 min)» y llama a una herramienta nueva, `planificar_sesiones(sesiones=[{hueco, asignatura, minutos}])`, con minutos 60, 90 o 120. `app/agentes/plan.py` calcula las fechas (varias sesiones en un mismo hueco, una detrás de otra desde el principio del hueco), valida (hueco existente, duración, asignatura de la hoja, que quepa, máximo 6, nada de campos de fecha) y el agente llama él mismo a `crear_eventos_estudio`, que sigue pasando por el verificador de siempre. El modelo ya no recibe `crear_eventos_estudio` (si lo llama, `permisos` lo rechaza).
+- **Por qué:** en la prueba manual el modelo escribió dos veces fechas en el pasado y el agente se rindió con 0 eventos. Un modelo de 4B elige bien un número y mal una fecha ISO.
+- **Descartada:** subir `max_vueltas` o endurecer el mensaje de error (seguiría pidiéndole al modelo que escriba fechas).
+- **Medido** (`eval/escenarios_acciones.py a b c`, modelo real, `qwen3:4b-instruct`, Google simulado, una ejecución por escenario; el «antes» sobre una copia limpia del código del commit anterior; salidas en `eval/salidas/escenarios_plan_*_sesion6.*`):
+
+| Escenario | Antes | Después (1.ª tanda) | Después (+ «crea TODAS las sugeridas») |
+|---|---|---|---|
+| a · Física 5,0 | 5 ev., 3 vueltas, 154,9 s, 0 rechazos del verificador* | 4 ev. (Física 2, Quím. 1, Hist. 1), 2 vueltas, 65,3 s | 4 ev. (igual), 2 vueltas, 403,4 s (ver nota) |
+| b · Historia 4,5 | 5 ev., 3 vueltas, 144,8 s | 3 ev. (Hist. 2, Quím. 1), 2 vueltas, 38,0 s | 4 ev. (Hist. 3, Quím. 1), 2 vueltas, 37,5 s |
+| c · calendario lleno | 0 ev., 2 vueltas, 22,9 s | 0 ev., 2 vueltas, 22,6 s | — (no se repitió) |
+
+  *Los escenarios simulados usan fechas futuras fijas, así que no reproducen el fallo de las fechas pasadas; por eso el «antes» crea eventos. Lo que cambia aquí es el coste y el reparto.
+- **Lo que mejora (medido):** una vuelta menos (3 → 2), 0 rechazos del verificador, tokens de salida 389+327 → 123 en a, y tiempos de 145-155 s a 38-65 s.
+- **Lo que empeora (medido):** se crean **menos sesiones que las sugeridas** (4 de 6 en a y b; antes 5). El modelo quita sesiones aunque cabrían. Se añadió «Crea TODAS las sugeridas» al prompt: b pasó de 3 a 4, a no cambió. No se siguió iterando para no ajustar el prompt a dos casos. **Nota:** los 403,4 s de a en la segunda tanda tienen los mismos tokens que la primera (65,3 s); no se ha investigado la causa (ya hay variaciones de tiempo entre tandas, ver la sesión 3).
+- **Prueba real** (`eval/prueba_plan_real.py`; modelo real, hoja de notas y calendario REALES de la cuenta demo, `eval/salidas/prueba_plan_real.md`): 2 vueltas, **6 eventos creados** en «Nota en Claro · Estudio», 0 rechazos, 51,3 s (839 + 1456 tokens de entrada, 66 + 177 de salida). Una sola ejecución. Los eventos se quedan en ese calendario (la app no borra).
+- **Contra:** las sesiones caen siempre al principio del hueco (el modelo no puede pedir «a las 17:30»). Tests: `tests/test_plan.py` (cálculo y validación), `tests/test_acciones.py` y `tests/test_mcp_calendar.py` (huecos numerados y siempre posteriores a ahora).

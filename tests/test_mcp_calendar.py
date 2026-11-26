@@ -53,9 +53,22 @@ def test_huecos_restan_lo_ocupado_y_descartan_los_cortos():
 
 
 def test_huecos_no_incluyen_el_pasado():
-    ahora = iso(2, 15)
+    ahora = iso(2, 15, 7)
     h = mcp_calendar.calcular_huecos([], iso(2, 0), iso(2, 23, 59), ahora, 'Europe/Madrid')
-    assert h[0]['inicio'][11:16] == '15:00'
+    assert h[0]['inicio'][11:16] == '15:15'      # el siguiente cuarto de hora, estrictamente después de ahora
+
+
+def test_ningun_hueco_empieza_en_ahora_ni_antes():
+    for ahora in (iso(2, 15), iso(2, 15, 14), iso(2, 7, 59), iso(2, 21, 50)):
+        h = mcp_calendar.calcular_huecos([], iso(2, 0), iso(3, 23, 59), ahora, 'Europe/Madrid')
+        assert h and all(datetime.fromisoformat(x['inicio']) > ahora for x in h)
+
+
+def test_huecos_numerados_con_dia_y_horas_legibles():
+    h = mcp_calendar.calcular_huecos([(iso(2, 10), iso(2, 12))], iso(2, 0), iso(3, 23, 59), AHORA, 'Europe/Madrid')
+    assert [x['id'] for x in h] == [1, 2, 3]
+    assert (h[0]['dia'], h[0]['inicio_hora'], h[0]['fin_hora'], h[0]['minutos']) == ('miércoles 2 dic', '08:00', '10:00', 120)
+    assert h[2]['dia'] == 'jueves 3 dic'
 
 
 def test_huecos_con_ocupacion_en_utc_se_convierte_a_madrid():

@@ -20,6 +20,15 @@ from .comun import ErrorGoogle, convertir_errores, limpiar_texto, llamar
 NOMBRE_CALENDARIO = 'Nota en Claro · Estudio'
 INICIO_DIA, FIN_DIA = 8, 22          # ventana de estudio de cada día (hora local)
 MIN_HUECO_MIN, MAX_HUECOS = 30, 30   # no se devuelven huecos de menos de 30 min ni más de 30 (ahorra tokens al modelo)
+PASO_MIN = 15                        # los huecos de hoy empiezan en el siguiente cuarto de hora estrictamente posterior a «ahora»
+DIAS_ES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+MESES_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
+
+
+def _siguiente_cuarto(ahora: datetime) -> datetime:
+    """Primer múltiplo de 15 min estrictamente posterior a `ahora` (así ningún hueco empieza «ahora» ni antes)."""
+    base = ahora.replace(second=0, microsecond=0)
+    return base + timedelta(minutes=PASO_MIN - base.minute % PASO_MIN)
 
 
 class Evento(BaseModel):
@@ -45,10 +54,11 @@ class ApiCalendar:
 def calcular_huecos(ocupado: list[tuple[datetime, datetime]], desde: datetime, hasta: datetime, ahora: datetime,
                     zona: str, inicio_dia: int = INICIO_DIA, fin_dia: int = FIN_DIA,
                     minimo: int = MIN_HUECO_MIN, maximo: int = MAX_HUECOS) -> list[dict]:
-    """Intervalos libres dentro de la ventana de estudio de cada día, sin pasado, sin huecos cortos."""
+    """Intervalos libres dentro de la ventana de estudio de cada día. Todos empiezan después de `ahora`, sin huecos cortos.
+    Cada hueco lleva un `id` (1, 2, 3…) y su día y horas legibles: el modelo elige huecos por número y no escribe fechas."""
     tz = ZoneInfo(zona)
     ocupado = sorted((a.astimezone(tz), b.astimezone(tz)) for a, b in ocupado)
-    desde, hasta = max(desde.astimezone(tz), ahora.astimezone(tz)), hasta.astimezone(tz)
+    desde, hasta = max(desde.astimezone(tz), _siguiente_cuarto(ahora.astimezone(tz))), hasta.astimezone(tz)
     huecos: list[dict] = []
     dia = desde.date()
     while dia <= hasta.date() and len(huecos) < maximo:
@@ -64,7 +74,9 @@ def calcular_huecos(ocupado: list[tuple[datetime, datetime]], desde: datetime, h
         if fin > cursor and (fin - cursor) >= timedelta(minutes=minimo):
             huecos.append((cursor, fin))
         dia += timedelta(days=1)
-    return [{'inicio': a.isoformat(), 'fin': b.isoformat()} for a, b in huecos[:maximo]]
+    return [{'id': i, 'dia': f'{DIAS_ES[a.weekday()]} {a.day} {MESES_ES[a.month - 1]}', 'inicio_hora': f'{a:%H:%M}',
+             'fin_hora': f'{b:%H:%M}', 'minutos': int((b - a).total_seconds() // 60),
+             'inicio': a.isoformat(), 'fin': b.isoformat()} for i, (a, b) in enumerate(huecos[:maximo], 1)]
 
 
 def _cuerpo_evento(ev: dict, zona: str) -> dict:

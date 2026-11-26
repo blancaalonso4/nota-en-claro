@@ -13,13 +13,14 @@ AUTOMATICO, CONFIRMAR, PROHIBIDO = 'automatico', 'confirmar', 'prohibido'
 PERMISOS: dict[str, str] = {
     'crear_plantilla_notas': AUTOMATICO, 'leer_notas': AUTOMATICO, 'guardar_informe': AUTOMATICO,
     'listar_eventos': AUTOMATICO, 'huecos_libres': AUTOMATICO, 'crear_eventos_estudio': AUTOMATICO,
+    'planificar_sesiones': AUTOMATICO,   # herramienta del agente (no es de un servidor): Python calcula las fechas y crea los eventos
     'leer_correos_orientador': AUTOMATICO, 'crear_borrador': AUTOMATICO,
     'enviar_borrador': CONFIRMAR,
 }
 
 # Herramientas que el modelo recibe en cada intención. enviar_borrador no está en ninguna: es un botón de la interfaz.
 HERRAMIENTAS_POR_INTENCION: dict[str, tuple[str, ...]] = {
-    'plan_estudio': ('leer_notas', 'huecos_libres', 'crear_eventos_estudio'),
+    'plan_estudio': ('leer_notas', 'huecos_libres', 'planificar_sesiones'),   # crear_eventos_estudio lo llama Python, no el modelo
     'informe': ('leer_notas', 'guardar_informe'),
     'correo_orientador': ('leer_correos_orientador', 'crear_borrador'),
 }

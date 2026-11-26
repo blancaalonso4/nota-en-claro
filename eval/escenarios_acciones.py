@@ -22,6 +22,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 from app.agentes.acciones import AgenteAcciones  # noqa: E402
 from app.agentes.puente_mcp import ResultadoLlamada  # noqa: E402
 from app.agentes.traza import Traza  # noqa: E402
+from app.mcp_servers import mcp_calendar  # noqa: E402
 from app.mcp_servers.mcp_drive import sesiones_sugeridas  # noqa: E402
 from app.rag.config import ConfigRAG, fijar_semillas  # noqa: E402
 from app.rag.generador import GeneradorOllama  # noqa: E402
@@ -41,11 +42,16 @@ def notas(**o):
 
 
 def huecos(dias=(2, 3, 4, 5)):
-    h = []
-    for d in dias:
-        h.append({'inicio': f'2026-12-0{d}T16:00:00+01:00', 'fin': f'2026-12-0{d}T20:00:00+01:00'})
-    h.append({'inicio': '2026-12-03T10:00:00+01:00', 'fin': '2026-12-03T13:00:00+01:00'})
-    return sorted(h, key=lambda x: x['inicio'])
+    """Huecos con el mismo formato que devuelve el servidor (numerados, con día y horas legibles)."""
+    h = [(f'2026-12-0{d}T16:00:00+01:00', f'2026-12-0{d}T20:00:00+01:00') for d in dias]
+    h.append(('2026-12-03T10:00:00+01:00', '2026-12-03T13:00:00+01:00'))
+    out = []
+    for i, (a, b) in enumerate(sorted(h), 1):
+        da, db = datetime.fromisoformat(a), datetime.fromisoformat(b)
+        out.append({'id': i, 'dia': f'{mcp_calendar.DIAS_ES[da.weekday()]} {da.day} {mcp_calendar.MESES_ES[da.month - 1]}',
+                    'inicio_hora': f'{da:%H:%M}', 'fin_hora': f'{db:%H:%M}', 'minutos': int((db - da).total_seconds() // 60),
+                    'inicio': a, 'fin': b})
+    return out
 
 
 class PuenteEscenario:

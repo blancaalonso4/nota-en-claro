@@ -13,8 +13,11 @@ ORI = 'orientador@ejemplo.com'
 NOTAS = {'nota_media_bachillerato': 8.0, 'avisos': [], 'materias': [
     {'asignatura': 'Física', 'nota': 5.5, 'fase': 'acceso', 'ponderacion': 0.2, 'segunda_lengua': False},
     {'asignatura': 'Historia', 'nota': 9.0, 'fase': 'acceso', 'ponderacion': 0, 'segunda_lengua': False}]}
-HUECOS = {'huecos': [{'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T20:00:00+01:00'},
-                     {'inicio': '2026-12-03T10:00:00+01:00', 'fin': '2026-12-03T13:00:00+01:00'}]}
+HUECOS = {'huecos': [
+    {'id': 1, 'dia': 'miércoles 2 dic', 'inicio_hora': '16:00', 'fin_hora': '20:00', 'minutos': 240,
+     'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T20:00:00+01:00'},
+    {'id': 2, 'dia': 'jueves 3 dic', 'inicio_hora': '10:00', 'fin_hora': '13:00', 'minutos': 180,
+     'inicio': '2026-12-03T10:00:00+01:00', 'fin': '2026-12-03T13:00:00+01:00'}]}
 
 
 def llamada(nombre, **args):
@@ -67,7 +70,7 @@ def AgenteAcciones(puente, traza, cliente, **kw):
     return ac.AgenteAcciones(puente, traza, cliente=cliente, orientador=ORI, ahora_fn=lambda: AHORA, **kw)
 
 
-EVENTO = {'titulo': 'Estudiar Física', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:30:00+01:00'}
+SESION = {'hueco': 1, 'asignatura': 'Física', 'minutos': 90}
 
 
 def creados(args):
@@ -76,43 +79,81 @@ def creados(args):
 
 def test_plan_de_estudio_completo_en_dos_vueltas(tmp_path):
     cliente = OllamaGuionizado(respuesta(llamada('leer_notas'), llamada('huecos_libres', desde='2026-12-01', hasta='2026-12-08')),
-                               respuesta(llamada('crear_eventos_estudio', eventos=[EVENTO])))
+                               respuesta(llamada('planificar_sesiones', sesiones=[SESION])))
     puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
     a, traza = agente(tmp_path, cliente, puente)
     r = a.ejecutar('plan_estudio', 'Hazme un plan de estudio para esta semana', dias=7)
     assert r.ok and r.vueltas == 2 and len(r.eventos) == 1
-    assert 'He creado 1 sesiones' in r.texto and 'miércoles 2 dic 16:00–17:30 · Estudiar Física' in r.texto
-    # el modelo ve las notas como datos delimitados y los huecos en formato compacto
+    assert 'He creado 1 sesiones' in r.texto and 'miércoles 2 dic 16:00–17:30 · Estudio: Física' in r.texto
+    # el modelo ve las notas como datos delimitados y los huecos numerados, sin fechas ISO
     herramientas_vuelta2 = {m['tool_name']: m['content'] for m in cliente.recibido[1]['messages'] if m['role'] == 'tool'}
     assert herramientas_vuelta2['leer_notas'].startswith('<datos_no_fiables fuente="drive">')
-    assert '2026-12-02: 16:00-20:00' in herramientas_vuelta2['huecos_libres']
+    assert '1: miércoles 2 dic, 16:00-20:00 (240 min)' in herramientas_vuelta2['huecos_libres']
+    assert '2026-12-02' not in herramientas_vuelta2['huecos_libres']
+    # al servidor llegan las fechas calculadas por Python
+    assert puente.llamadas[-1] == ('crear_eventos_estudio', {'eventos': [
+        {'titulo': 'Estudio: Física', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:30:00+01:00'}]})
     # traza: 2 llamadas al modelo con sus tokens, 3 herramientas con permiso
     assert [p['tokens_entrada'] for p in traza.pasos if p['tipo'] == 'modelo'] == [300, 300]
     assert [(p['herramienta'], p['permiso']) for p in traza.pasos if p['tipo'] == 'herramienta'] == [
         ('leer_notas', 'automatico'), ('huecos_libres', 'automatico'), ('crear_eventos_estudio', 'automatico')]
-    # opciones reproducibles en cada llamada
+    # opciones reproducibles en cada llamada; el modelo ve planificar_sesiones y NO crear_eventos_estudio
     for rec in cliente.recibido:
         assert rec['options']['seed'] == 42 and rec['options']['temperature'] == 0 and rec['options']['num_predict'] == 600
-        assert rec['think'] is False and {t['function']['name'] for t in rec['tools']} == {'leer_notas', 'huecos_libres', 'crear_eventos_estudio'}
+        assert rec['think'] is False
+        assert {t['function']['name'] for t in rec['tools']} == {'leer_notas', 'huecos_libres', 'planificar_sesiones'}
 
 
-def test_evento_fuera_de_hueco_se_devuelve_al_modelo_para_que_corrija(tmp_path):
-    malo = {**EVENTO, 'inicio': '2026-12-02T21:00:00+01:00', 'fin': '2026-12-02T22:00:00+01:00'}
+def test_varias_sesiones_en_el_mismo_hueco_van_una_detras_de_otra(tmp_path):
+    sesiones = [{'hueco': 1, 'asignatura': 'Física', 'minutos': 90}, {'hueco': 1, 'asignatura': 'Historia', 'minutos': 60},
+                {'hueco': 2, 'asignatura': 'física', 'minutos': 120}]
     cliente = OllamaGuionizado(respuesta(llamada('leer_notas'), llamada('huecos_libres', desde='2026-12-01', hasta='2026-12-08')),
-                               respuesta(llamada('crear_eventos_estudio', eventos=[malo])),
-                               respuesta(llamada('crear_eventos_estudio', eventos=[EVENTO])))
+                               respuesta(llamada('planificar_sesiones', sesiones=sesiones)))
+    puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
+    a, _ = agente(tmp_path, cliente, puente)
+    r = a.ejecutar('plan_estudio', 'plan')
+    assert r.ok
+    assert [(e['titulo'], e['inicio'][11:16], e['fin'][11:16]) for e in r.eventos] == [
+        ('Estudio: Física', '16:00', '17:30'), ('Estudio: Historia', '17:30', '18:30'), ('Estudio: Física', '10:00', '12:00')]
+
+
+def test_sesion_que_no_cabe_se_devuelve_al_modelo_con_el_espacio_que_queda(tmp_path):
+    malo = [{'hueco': 2, 'asignatura': 'Física', 'minutos': 120}, {'hueco': 2, 'asignatura': 'Historia', 'minutos': 90}]
+    cliente = OllamaGuionizado(respuesta(llamada('leer_notas'), llamada('huecos_libres', desde='2026-12-01', hasta='2026-12-08')),
+                               respuesta(llamada('planificar_sesiones', sesiones=malo)),
+                               respuesta(llamada('planificar_sesiones', sesiones=[SESION])))
     puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
     a, traza = agente(tmp_path, cliente, puente)
     r = a.ejecutar('plan_estudio', 'plan')
     assert r.ok and r.vueltas == 3
-    assert [n for n, _ in puente.llamadas].count('crear_eventos_estudio') == 1    # el malo no llegó al servidor
+    assert [n for n, _ in puente.llamadas].count('crear_eventos_estudio') == 1    # la mala no llegó al servidor
     fallos = [p for p in traza.pasos if p['tipo'] == 'verificador' and p['fallo']]
-    assert len(fallos) == 1 and 'hueco libre' in fallos[0]['error']
-    assert any('no cabe en ningún hueco libre' in m['content'] for m in cliente.recibido[2]['messages'] if m['role'] == 'tool')
+    assert len(fallos) == 1 and 'quedan 60 min' in fallos[0]['error']
+    assert any('quedan 60 min' in m['content'] for m in cliente.recibido[2]['messages'] if m['role'] == 'tool')
 
 
-def test_no_se_pueden_crear_eventos_sin_mirar_los_huecos(tmp_path):
-    cliente = OllamaGuionizado(respuesta(llamada('crear_eventos_estudio', eventos=[EVENTO])), respuesta(texto='No puedo sin huecos.'))
+def test_si_el_modelo_escribe_fechas_se_rechaza(tmp_path):
+    con_fechas = [{'hueco': 1, 'asignatura': 'Física', 'minutos': 90, 'inicio': '2020-01-01T10:00:00'}]
+    cliente = OllamaGuionizado(respuesta(llamada('leer_notas'), llamada('huecos_libres', desde='2026-12-01', hasta='2026-12-08')),
+                               respuesta(llamada('planificar_sesiones', sesiones=con_fechas)), respuesta(texto='no puedo'))
+    puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
+    a, _ = agente(tmp_path, cliente, puente)
+    r = a.ejecutar('plan_estudio', 'plan')
+    assert r.eventos == [] and 'crear_eventos_estudio' not in [n for n, _ in puente.llamadas]
+
+
+def test_el_modelo_no_puede_llamar_a_crear_eventos_estudio_directamente(tmp_path):
+    directo = {'titulo': 'x', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:00:00+01:00'}
+    cliente = OllamaGuionizado(respuesta(llamada('leer_notas'), llamada('huecos_libres', desde='2026-12-01', hasta='2026-12-08')),
+                               respuesta(llamada('crear_eventos_estudio', eventos=[directo])), respuesta(texto='vale'))
+    puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
+    a, _ = agente(tmp_path, cliente, puente)
+    r = a.ejecutar('plan_estudio', 'plan')
+    assert r.eventos == [] and 'crear_eventos_estudio' not in [n for n, _ in puente.llamadas]
+
+
+def test_no_se_pueden_planificar_sesiones_sin_mirar_los_huecos(tmp_path):
+    cliente = OllamaGuionizado(respuesta(llamada('planificar_sesiones', sesiones=[SESION])), respuesta(texto='No puedo sin huecos.'))
     puente = PuenteFalso({'crear_eventos_estudio': creados})
     a, _ = agente(tmp_path, cliente, puente)
     r = a.ejecutar('plan_estudio', 'plan')
@@ -210,7 +251,7 @@ def test_el_sistema_dice_que_los_datos_no_son_instrucciones():
         assert 'enviar_borrador' not in ac.permisos.herramientas_de(intencion)
 
 
-def test_huecos_a_texto_compacto():
+def test_huecos_a_texto_numerados():
     assert ac.huecos_a_texto([]) == 'No hay huecos libres en ese rango.'
-    t = ac.huecos_a_texto(HUECOS['huecos'] + [{'inicio': '2026-12-02T21:00:00+01:00', 'fin': '2026-12-02T22:00:00+01:00'}])
-    assert '2026-12-02: 16:00-20:00, 21:00-22:00' in t and '2026-12-03: 10:00-13:00' in t
+    t = ac.huecos_a_texto(HUECOS['huecos'])
+    assert '1: miércoles 2 dic, 16:00-20:00 (240 min)' in t and '2: jueves 3 dic, 10:00-13:00 (180 min)' in t

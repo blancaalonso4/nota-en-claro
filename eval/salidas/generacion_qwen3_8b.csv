@@ -1,0 +1,26 @@
+﻿id,tipo,oro_en_k,abstiene,motivo,cita_oro,dato_ok,correcto,tokens_entrada,tokens_salida,seg_generar,seg_recuperar,respuesta,chunk_citado,fragmentos
+P01,normal,1,0,,0,1,0,1828,100,133.37,18.224,Tienes tres días hábiles para solicitar la revisión de tu examen si no estás de acuerdo con la calificación.,doc13_v008,doc08_v020 doc13_v008 doc13_v007
+P02,normal,1,0,,1,0,0,1991,97,117.24,4.164,"La matrícula en la PAU en Madrid cuesta 46,51 euros si solo se realiza la parte obligatoria, sin asignaturas de la fase de admisión.",doc17_v006,doc17_v006 doc16_v015 doc16_v009
+P03,normal,1,0,,1,1,1,1896,59,105.04,3.48,"En el examen de Matemáticas II, los dos primeros errores ortográficos no se penalizarán.",doc01_v001,doc01_v001 doc01_v002 doc08_v016
+P04,normal,1,0,,1,1,1,1888,76,107.75,3.825,"Se permite un máximo de 20 minutos de demora tras el inicio, siempre que sea por causa debidamente justificada.",doc09_v007,doc09_v007 doc09_v001 doc08_v014
+P05,normal,1,0,,1,1,1,1945,63,109.74,3.954,"No, no puedes llevar una calculadora que haga gráficas al examen de Matemáticas.",doc02_v000,doc02_v000 doc08_v012 doc09_v006
+P06,normal,1,0,,1,1,1,1892,87,114.3,4.08,Puedes solicitar hasta un máximo de 12 titulaciones en la preinscripción.,doc16_v001,doc16_v001 doc16_v002 doc16_v012
+P07,normal,1,0,,1,0,0,1879,58,108.21,3.456,La nota de admisión es la nota media final obtenida en el ciclo formativo de grado superior.,doc14_v000,doc14_v000 doc08_v006 doc08_v003
+P08,normal,1,0,,1,1,1,1928,66,112.79,3.097,El número máximo de cuadernillos a corregir por profesor/a será de 200.,doc18_v008,doc18_v008 doc18_v007 doc18_v002
+P09,normal,1,0,,1,1,1,1958,121,127.89,4.093,El plazo para presentar las solicitudes de adaptación finalizó el 20 de enero de 2026.,doc19_v003,doc19_v003 doc17_v012 doc08_v007
+P10,normal,1,0,,1,1,1,1897,67,114.4,3.689,"No, solo es válido el DNI en formato físico.",doc05_v000,doc05_v000 doc09_v002 doc09_v007
+P11,normal,1,0,,0,1,0,1841,53,105.58,4.294,Se pueden tener en cuenta un máximo de dos asignaturas para la ponderación.,doc06_v005,doc16_v012 doc06_v005 doc08_v004
+P12,normal,1,0,,1,1,1,1985,82,122.4,3.112,"Sí, debes volver a matricularte para la extraordinaria del 18 al 24 de junio.",doc12_v002,doc12_v002 doc12_v000 doc12_v003
+P13,normal,1,0,,1,1,1,1793,80,106.21,3.346,La sanción por una falta muy grave durante la PAU puede incluir la anulación completa de la prueba.,doc05_v001,doc05_v001 doc11_v001 doc10_v000
+P14,normal,1,0,,1,0,0,1885,85,117.56,3.209,El profesor de apoyo colabora con los tribunales correctores para orientar y asistir a los estudiantes durante la celebración de la PAU.,doc04_v000,doc04_v000 doc13_v000 doc18_v002
+P15,normal,1,0,,1,0,0,2046,97,130.29,3.601,"Si te ingresan en el hospital y no puedes ir a la convocatoria ordinaria, debes realizar los exámenes en la convocatoria extraordinaria.",doc03_v001,doc03_v001 doc03_v000 doc08_v006
+P16,dificil,1,0,,1,1,1,1906,102,123.89,3.447,"Sí, puedes ser sancionado por tener un dispositivo electrónico al alcance aunque esté apagado.",doc05_v001,doc11_v000 doc08_v013 doc05_v001
+P17,dificil,1,0,,1,0,0,1902,85,115.63,3.468,"Debes guardar el móvil en la mochila durante el examen. Si se detecta un dispositivo no autorizado, se calificará el examen con 0 puntos.",doc05_v001,doc08_v013 doc11_v000 doc05_v001
+P18,dificil,1,0,,1,1,1,1816,53,103.13,3.252,"Sí, la revisión puede dar lugar a que baje la nota.",doc08_v021,doc13_v009 doc08_v021 doc08_v020
+P19,dificil,1,0,,1,0,0,2114,173,163.55,3.928,"Sí, las materias de la fase voluntaria aprobadas en 2024 sirven para el curso 2026-2027 y también para el 2027-2028.",doc16_v005,doc16_v005 doc14_v003 doc20_v004
+P20,dificil,0,0,,0,0,0,1982,94,129.2,4.503,Se pueden conceder adaptaciones para estudiantes con dislexia siempre que hayan sido aplicadas en bachillerato. La solicitud se debe realizar a través del instituto o colegio.,doc15_v008,doc13_v007 doc17_v012 doc15_v008
+P21,sin_respuesta,0,1,el modelo dice NO CONSTA,0,1,1,2029,62,120.85,3.762,NO CONSTA,,doc16_v007 doc17_v005 doc06_v000
+P22,sin_respuesta,0,1,el modelo dice NO CONSTA,0,1,1,1983,86,123.46,4.147,NO CONSTA,,doc17_v005 doc18_v000 doc17_v001
+P23,sin_respuesta,0,0,,0,1,0,1891,102,119.99,4.0,"No, no hay aparcamiento para coches en las sedes donde se hace el examen.",doc08_v009,doc08_v009 doc11_v000 doc09_v002
+P24,sin_respuesta,0,0,,0,1,0,1812,101,117.76,4.287,"No, no se permite llevar comida o un bocadillo al aula durante el examen.",doc04_v001,doc08_v017 doc04_v001 doc10_v001
+P25,sin_respuesta,0,0,,0,1,0,1958,79,119.52,4.258,"El costo del crédito en primera matrícula se cubre con la Beca de Matrícula, que cubre el precio oficial de los créditos.",doc15_v011,doc15_v011 doc15_v012 doc17_v006

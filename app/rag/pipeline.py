@@ -19,6 +19,10 @@ class SistemaRAG:
         self.generador = GeneradorOllama(self.cfg)
         self.reordenador = Reordenador(self.cfg.reordenador) if self.cfg.usar_reordenador else None
 
+    def calentar(self) -> list[float]:
+        """Calienta el modelo de generación (ver GeneradorOllama.calentar). Llamar una vez tras crear el sistema."""
+        return self.generador.calentar()
+
     def recuperar(self, pregunta: str) -> list[dict]:
         orden, _ = buscar(self.indice, pregunta)
         if self.reordenador:

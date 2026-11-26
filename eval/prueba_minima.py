@@ -27,6 +27,8 @@ def main() -> None:
     t_arranque = time.perf_counter() - t0
     print(f"[medido] índice {sistema.indice.origen}: {len(sistema.indice.chunks)} fragmentos, "
           f"{sistema.indice.segundos:.2f} s (arranque total {t_arranque:.1f} s)")
+    t_cal = sistema.calentar()
+    print(f"[medido] calentamiento del modelo: {t_cal} s")
     print(f"Pregunta {q['id']}: {q['pregunta']}\n")
 
     r = sistema.responder(q['pregunta'])

@@ -11,7 +11,9 @@ from app.rag.pipeline import SistemaRAG, formatear  # noqa: E402
 
 @st.cache_resource
 def cargar_sistema() -> SistemaRAG:
-    return SistemaRAG()
+    sistema = SistemaRAG()
+    sistema.calentar()
+    return sistema
 
 
 st.title('Nota en Claro')

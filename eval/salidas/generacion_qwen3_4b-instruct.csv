@@ -1,0 +1,26 @@
+﻿id,tipo,oro_en_k,abstiene,motivo,cita_oro,dato_ok,correcto,tokens_entrada,tokens_salida,seg_generar,seg_recuperar,respuesta,chunk_citado,fragmentos
+P01,normal,1,0,,0,1,0,1820,120,86.62,16.081,Tienes tres días hábiles siguientes a la fecha de publicación de las calificaciones para presentar una solicitud de revisión.,doc13_v008,doc08_v020 doc13_v008 doc13_v007
+P02,normal,1,0,,1,0,0,1983,87,83.68,4.654,"Cuesta 46,51 euros por inscripción únicamente en la Fase de Admisión de la prueba.",doc17_v006,doc17_v006 doc16_v015 doc16_v009
+P03,normal,1,1,el modelo dice NO CONSTA,0,0,0,1888,38,60.16,4.347,NO CONSTA,,doc01_v001 doc01_v002 doc08_v016
+P04,normal,1,0,,1,1,1,1880,146,78.12,3.407,"Se permite un máximo de 20 minutos de retraso en la entrada al aula, siempre que sea por causa debidamente justificada.",doc09_v001,doc09_v007 doc09_v001 doc08_v014
+P05,normal,1,0,,1,1,1,1937,138,79.72,4.186,"No, no puedes llevar una calculadora que haga gráficas porque tiene pantalla gráfica, lo cual está prohibido.",doc02_v000,doc02_v000 doc08_v012 doc09_v006
+P06,normal,1,0,,1,1,1,1884,80,66.38,4.108,Puedes solicitar hasta un máximo de 12 titulaciones.,doc16_v001,doc16_v001 doc16_v002 doc16_v012
+P07,normal,1,0,,1,1,1,1871,139,89.76,3.406,Entres en la universidad con la nota media final del ciclo formativo de grado superior.,doc14_v000,doc14_v000 doc08_v006 doc08_v003
+P08,normal,1,0,,1,1,1,1920,62,74.0,5.852,Cada profesor puede corregir como máximo 200 cuadernillos.,doc18_v008,doc18_v008 doc18_v007 doc18_v002
+P09,normal,1,0,,1,1,1,1950,130,81.12,4.307,Se podían presentar las solicitudes de adaptación del 1 de diciembre de 2025 al 20 de enero de 2026.,doc19_v003,doc19_v003 doc17_v012 doc08_v007
+P10,normal,1,0,,1,1,1,1889,90,78.99,4.484,"No, el DNI del móvil no es válido para identificarse en el examen; se requiere el DNI en formato físico visible sobre el pupitre.",doc05_v000,doc05_v000 doc09_v002 doc09_v007
+P11,normal,1,0,,0,1,0,1833,54,61.81,8.04,Se pueden tener en cuenta un máximo de dos materias para la ponderación.,doc06_v005,doc16_v012 doc06_v005 doc08_v004
+P12,normal,1,0,,1,1,1,1977,132,80.82,3.063,"Sí, tienes que volver a matricularte para la extraordinaria, del 18 al 24 de junio, aunque quedará exento del pago de las tasas por la competición.",doc12_v002,doc12_v002 doc12_v000 doc12_v003
+P13,normal,1,0,,1,1,1,1785,91,74.29,3.319,"En caso de reiteración de la conducta, la infracción será considerada muy grave, lo que podrá conllevar la anulación completa de la prueba.",doc05_v001,doc05_v001 doc11_v001 doc10_v000
+P14,normal,1,0,,1,0,0,1877,300,124.72,4.845,"Sirve para orientar y asistir a los estudiantes durante la celebración de la PAU, resolver incidencias derivadas de la inscripción y notificar a los tribunales de incidencias graves que impiden a los estudiantes realizar ejercicios de la prueba.",doc04_v000,doc04_v000 doc13_v000 doc18_v002
+P15,normal,1,0,,1,1,1,2038,300,123.81,3.575,"Realizas los exámenes en la convocatoria extraordinaria, pero debes formalizar tu matrícula en ella dentro de los plazos establecidos por la Universidad. Si no puedes asistir a la convocatoria extraordinaria, deberás realizar la prueba en el siguiente curso académico.",doc03_v001,doc03_v001 doc03_v000 doc08_v006
+P16,dificil,1,0,,1,0,0,1898,130,91.72,5.815,"Sí, puedes ser sancionado porque tener el móvil a tu alcance, incluso apagado, se considera una infracción, ya que se considera que está en posesión de un dispositivo susceptible de ser utilizado para copiar.",doc05_v001,doc11_v000 doc08_v013 doc05_v001
+P17,dificil,1,1,ninguna frase de los fragmentos sostiene la respuesta,0,1,0,1894,132,89.2,4.313,"Debes guardar tu móvil en la mochila o en el lugar indicado por los vocales del tribunal. Si te encuentran un dispositivo no autorizado, recibirás una calificación de cero en el examen.",,doc08_v013 doc11_v000 doc05_v001
+P18,dificil,1,0,,1,1,1,1808,101,80.53,5.863,"No, si pides revisión por un error de suma, se corregirá la nota, pero no se puede acabar poniéndote menos nota que la que tenías; la nota final será la media entre la original (corregida si hubo error) y la nueva corrección.",doc08_v021,doc13_v009 doc08_v021 doc08_v020
+P19,dificil,1,0,,1,0,0,2106,209,113.0,4.673,"Sí, las asignaturas aprobadas en la parte voluntaria en 2024 tienen validez para la preinscripción en el curso 2026-2027 y en el 2027-2028, ya que son válidas para el curso inmediatamente después de superar las pruebas y para los dos cursos académicos siguientes.",doc16_v005,doc16_v005 doc14_v003 doc20_v004
+P20,dificil,0,1,el modelo dice NO CONSTA,0,0,0,1974,58,69.7,4.474,NO CONSTA,,doc13_v007 doc17_v012 doc15_v008
+P21,sin_respuesta,0,1,el modelo dice NO CONSTA,0,1,1,2021,300,119.24,3.977,NO CONSTA,,doc16_v007 doc17_v005 doc06_v000
+P22,sin_respuesta,0,1,el modelo dice NO CONSTA,0,1,1,1975,142,85.27,4.023,NO CONSTA,,doc17_v005 doc18_v000 doc17_v001
+P23,sin_respuesta,0,1,el modelo dice NO CONSTA,0,1,1,1883,85,72.4,3.946,NO CONSTA,,doc08_v009 doc11_v000 doc09_v002
+P24,sin_respuesta,0,1,el modelo dice NO CONSTA,0,1,1,1804,300,112.06,4.8,NO CONSTA,,doc08_v017 doc04_v001 doc10_v001
+P25,sin_respuesta,0,1,el modelo dice NO CONSTA,0,1,1,1950,49,64.89,4.165,NO CONSTA,,doc15_v011 doc15_v012 doc17_v006

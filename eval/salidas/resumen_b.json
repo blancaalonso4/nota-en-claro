@@ -1,0 +1,55 @@
+{
+ "recuperacion_usada": "con reordenador (top-20)",
+ "k": 3,
+ "modelos": {
+  "qwen3:8b": {
+   "correctas": 13,
+   "n": 25,
+   "correctas_respondibles": 11,
+   "n_respondibles": 20,
+   "fidelidad": "11/19",
+   "abstencion_sin_respuesta": "2/5",
+   "abstencion_indebida": "0/20",
+   "tokens_entrada_medio": 1921.8,
+   "tokens_salida_medio": 85.1,
+   "seg_generar_medio": 118.8,
+   "seg_generar_max": 163.6,
+   "seg_generar_total": 2970.0,
+   "think_enviado": true,
+   "carga_modelo_s": 8.8
+  },
+  "qwen3:4b-instruct": {
+   "correctas": 16,
+   "n": 25,
+   "correctas_respondibles": 11,
+   "n_respondibles": 20,
+   "fidelidad": "11/19",
+   "abstencion_sin_respuesta": "5/5",
+   "abstencion_indebida": "3/20",
+   "tokens_entrada_medio": 1913.8,
+   "tokens_salida_medio": 136.5,
+   "seg_generar_medio": 85.7,
+   "seg_generar_max": 124.7,
+   "seg_generar_total": 2142.0,
+   "think_enviado": true,
+   "carga_modelo_s": 6.7
+  }
+ },
+ "entorno": {
+  "fecha": "2026-11-26 12:19",
+  "maquina": "HPBlanca · Windows-11-10.0.26200-SP0 · Intel64 Family 6 Model 154 Stepping 4, GenuineIntel · 12 hilos · 15.7 GB RAM · sin GPU",
+  "python": "3.14.10",
+  "ollama": "ollama version is 0.40.18",
+  "modelos_ollama": {
+   "qwen3:4b-instruct": "0edcdef34593 (2.5 GB)",
+   "qwen3:8b": "500a1f067a9f (5.2 GB)"
+  },
+  "librerias": {
+   "torch": "2.15.0",
+   "sentence-transformers": "5.7.0",
+   "transformers": "5.24.1",
+   "numpy": "2.5.5",
+   "ollama": "0.6.3"
+  }
+ }
+}

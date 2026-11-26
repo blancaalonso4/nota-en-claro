@@ -1,0 +1,44 @@
+{
+ "n_respondibles": 20,
+ "carga_reordenador_s": 64.9,
+ "indice": {
+  "origen": "disco",
+  "fragmentos": 256
+ },
+ "configs": {
+  "sin reordenador": {
+   "@1": 12,
+   "@3": 16,
+   "@5": 17,
+   "@10": 18,
+   "seg_medio": 0.0277,
+   "seg_max": 0.0385
+  },
+  "con reordenador (top-20)": {
+   "@1": 15,
+   "@3": 19,
+   "@5": 19,
+   "@10": 19,
+   "seg_medio": 2.7451,
+   "seg_max": 3.4249
+  }
+ },
+ "ganadora": "con reordenador (top-20)",
+ "entorno": {
+  "fecha": "2026-11-26 10:46",
+  "maquina": "HPBlanca · Windows-11-10.0.26200-SP0 · Intel64 Family 6 Model 154 Stepping 4, GenuineIntel · 12 hilos · 15.7 GB RAM · sin GPU",
+  "python": "3.14.10",
+  "ollama": "ollama version is 0.40.18",
+  "modelos_ollama": {
+   "qwen3:4b-instruct": "0edcdef34593 (2.5 GB)",
+   "qwen3:8b": "500a1f067a9f (5.2 GB)"
+  },
+  "librerias": {
+   "torch": "2.15.0",
+   "sentence-transformers": "5.7.0",
+   "transformers": "5.24.1",
+   "numpy": "2.5.5",
+   "ollama": "0.6.3"
+  }
+ }
+}

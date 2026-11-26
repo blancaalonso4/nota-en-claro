@@ -29,7 +29,10 @@ class ConfigRAG:
     num_ctx: int = 4096
     semilla: int = 42
     temperature: float = 0.0
-    think: bool = False
+    think: bool | None = False
+    num_thread: int | None = 8      # fijo: con el valor por defecto de Ollama la salida variaba (ver docs/decisiones.md)
+    keep_alive: str = '30m'         # evita que Ollama descargue el modelo (y se pierda el estado calentado) a mitad de una tanda
+    llamadas_calentamiento: int = 3 # llamadas cortas tras cargar el modelo, antes de las preguntas reales
 
 
 def fijar_semillas(semilla: int = 42) -> None:

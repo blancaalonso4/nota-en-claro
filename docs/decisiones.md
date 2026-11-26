@@ -32,5 +32,30 @@ Todas **medidas** en este portátil (CPU, sin GPU):
 - Tokens de entrada 1792 (todas las ejecuciones).
 - 1.ª ejecución, modelo en frío: 147 tokens de salida, 178,56 s.
 - Ejecuciones 2.ª a 4.ª, modelo caliente: 115 tokens de salida, 32,6–33,9 s, respuesta idéntica en las tres.
-- **La 1.ª ejecución dio una respuesta distinta a las otras tres** pese a `seed=42` y `temperature=0`. Hipótesis (no verificada): diferencia de arranque en frío en Ollama. Pendiente de investigar antes de prometer reproducibilidad exacta.
+- **La 1.ª ejecución dio una respuesta distinta a las otras tres** pese a `seed=42` y `temperature=0`. Diagnosticado el 2026-11-26: ver la sección siguiente.
 - Calidad de P01: la cita es correcta (doc08, «Días 12, 15 y 16 de junio»), pero la respuesta no da el plazo («tres días hábiles» está en doc13/doc07) y la 1.ª ejecución escribió «del 12 al 16 de junio», que no es lo que dice la cita. Con k=3 no se recuperó el fragmento de doc13/doc07. Pendiente para la evaluación de la próxima sesión.
+
+## 2026-11-26 · Diagnóstico: la salida de Ollama depende del estado del runner (P01, qwen3:8b)
+**Medido.** Se registraron los hashes del prompt exacto, de los fragmentos recuperados y de la salida (`eval/diagnostico_frio.py`, datos en `eval/salidas/diagnostico_frio.jsonl`).
+- **Prompt y fragmentos: idénticos byte a byte** en todas las ejecuciones (mismos `sha_prompt` y `sha_fragmentos`, 1792 tokens de entrada). El origen no está en nuestro código: está en Ollama.
+- Con el modelo recién cargado (`ollama stop qwen3:8b` antes de cada una), P01 dio **147 tokens, misma salida, 3/3**. En caliente, tras esas ejecuciones, **115 tokens, 3/3**. Son salidas distintas entre sí.
+- La salida no depende solo de «frío o caliente»: dependió también de lo que se había ejecutado antes en el modelo cargado. Valores distintos de la misma pregunta P01 con las mismas semillas: 147, 115, 120 (tras alternar con P02, estable 3/3) y 155. P02 dio 97 tokens, siempre la misma salida.
+- Con `num_thread=8` fijo: en frío sin calentar 147 (2/2, igual que con hilos por defecto); en caliente 155 (3/3, incluso tras recargar el modelo). Con `num_thread=8` y 3 llamadas cortas de calentamiento tras la carga, P01 dio **155 tokens, misma salida, 4/4** (2 con `diagnostico_frio.py` y 2 con `prueba_minima.py`, cada una tras `ollama stop`). Con hilos por defecto y calentamiento, 147 (2/2).
+- **Contraejemplo medido:** tras esas ejecuciones, una ejecución en caliente con `prueba_minima.py` (mismo `num_thread=8`, mismo calentamiento) dio 115 tokens, no 155.
+- Tiempos medidos: las dos primeras preguntas largas tras una carga tardan 130–170 s; después, 27–41 s. No vimos relación directa entre esa fase lenta y la salida.
+
+**Causa.** No identificada del todo. Lo demostrado es que, con prompt y semilla idénticos, la salida de Ollama 0.40.18 en esta CPU cambia con el estado del runner (historial de llamadas y caché). Mecanismo sin verificar: portátil con CPU híbrida (i7-1255U, 2 núcleos P + 8 E) y caché de contexto reutilizada entre llamadas.
+
+**Arreglo aplicado (protocolo, no garantía).**
+- `num_thread=8` fijo, `keep_alive='30m'` (el modelo no se descarga a mitad de una tanda) y 3 llamadas de calentamiento tras cargar (`GeneradorOllama.calentar()`, `SistemaRAG.calentar()`).
+- `eval/evaluar.py` hace `ollama stop <modelo>` antes de calentar, para que cada tanda empiece de una carga limpia.
+- Con ese protocolo, la primera pregunta tras la carga se reprodujo 4/4. Las siguientes dependen del estado y de su orden: la reproducibilidad exacta solo se puede afirmar para una tanda completa lanzada desde carga limpia, no entre llamadas sueltas.
+- **Alternativas descartadas:** `keep_alive=0` en cada llamada (recargar el modelo cada vez, más lento); dejar los hilos por defecto (salidas 115/120/147 según el historial).
+- **No probado:** `qwen3:4b-instruct` bajo este protocolo. Las cifras de `eval/resultados.md` deben leerse con esta salvedad.
+
+## 2026-11-26 · Evaluación (`eval/evaluar.py`): definiciones y resultados
+- **Definiciones del Caso III:** oro = fragmento con el ancla literal; acierto@k sobre las 20 respondibles (en las de dos evidencias, deben estar las dos); correcta = no se abstiene, cita un fragmento de oro y la respuesta contiene el `dato_clave`; en las 5 sin respuesta, correcta = se abstiene; fidelidad = correctas entre las respondibles con el oro dentro de los k fragmentos; abstención indebida sobre las 20 respondibles.
+- **Recuperación ganadora (medido):** con reordenador top-20 (@1 15/20, @3 19/20, @5 19/20) frente a sin reordenador (12/16/17); coste medido 2,75 s/pregunta frente a 0,03 s. Con esto la parte b usa reordenador y k=3. Se mantiene `usar_reordenador=False` en `ConfigRAG` por defecto hasta decidir si la latencia compensa (la generación tarda decenas de segundos, así que 2,7 s es poco).
+- **Resultados de generación (medidos, ver `eval/resultados.md`):** `qwen3:8b` 13/25 correctas, abstiene 2/5 sin respuesta, 0/20 abstención indebida; `qwen3:4b-instruct` 16/25, abstiene 5/5, 3/20 indebida. Respondibles correctas, 11/20 en ambos.
+- **Salvedades:** los segundos por pregunta de esta tanda (118,8 s con 8b; 85,7 s con 4b) son mucho mayores que los 27–41 s medidos antes en caliente; no se ha investigado la causa (la tanda se ejecutó con el modelo de reordenador cargado en el mismo proceso y otras tareas en la máquina). La reproducibilidad de 4b bajo el protocolo no está comprobada.
+- **Alternativa descartada:** medir la generación sin reordenador (la ganadora de la parte a es la que pidió el enunciado).

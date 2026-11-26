@@ -44,11 +44,29 @@ def preparar_indice(cfg: ConfigRAG) -> None:
     print(f'[ok] Índice {ind.origen}: {len(ind.chunks)} fragmentos en {ind.segundos:.2f} s.')
 
 
+def comprobar_google() -> None:
+    """Aviso (no bloquea): la normativa y la calculadora con notas a mano funcionan sin Google."""
+    from app.servicios import estado_google
+    g = estado_google()
+    if g['lista']:
+        print('[ok] Google: credenciales, tokens y ORIENTADOR_EMAIL listos.')
+        return
+    print('[aviso] La parte de Google no está lista (la normativa y la calculadora con notas a mano funcionan igual):')
+    if not g['credenciales']:
+        print('   - falta credentials.json en la raíz del proyecto.')
+    faltan = [p for p, ok in g['tokens'].items() if not ok]
+    if faltan:
+        print(f'   - falta autorizar {", ".join(faltan)}: python -m app.mcp_servers.autorizar')
+    if g['orientador'] is None:
+        print('   - falta ORIENTADOR_EMAIL en .env (copia .env.example).')
+
+
 def main() -> None:
     cfg = ConfigRAG()
     comprobar_ollama(cfg)
     print('Comprobando el índice (la primera vez descarga el encoder y tarda un par de minutos)...')
     preparar_indice(cfg)
+    comprobar_google()
     puerto = '8501'
     print(f'Lanzando la interfaz en http://localhost:{puerto} (Ctrl+C para parar)...')
     # headless: evita el aviso de correo de Streamlit en la primera ejecución; el navegador lo abrimos nosotros

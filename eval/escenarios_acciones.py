@@ -130,7 +130,7 @@ def main(claves: list[str]) -> None:
         print(json.dumps(r, ensure_ascii=False, indent=1), flush=True)
     (SALIDAS / 'escenarios_acciones.jsonl').write_text('\n'.join(json.dumps(r, ensure_ascii=False) for r in resultados) + '\n', encoding='utf-8')
     lineas = [f'# Escenarios del agente de acciones ({datetime.now():%Y-%m-%d})', '',
-              f'Modelo `{cfg.modelo}`, seed {cfg.semilla}, temperature {cfg.temperature}, num_predict 350, think False. {platform.platform()}, CPU sin GPU.',
+              f'Modelo `{cfg.modelo}`, seed {cfg.semilla}, temperature {cfg.temperature}, num_predict 600, think False. {platform.platform()}, CPU sin GPU.',
               'Cifras **medidas**: tokens (los reporta Ollama por llamada), segundos (reloj, `time.perf_counter`), vueltas (llamadas al modelo). Herramientas de Google simuladas.', '',
               '| Escenario | vueltas | herramientas (en orden) | eventos | tokens entrada | tokens salida | s total | resultado |', '|---|---|---|---|---|---|---|---|']
     for r in resultados:

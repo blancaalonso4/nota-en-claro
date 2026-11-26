@@ -126,7 +126,7 @@ class PuenteMCP:
             if permisos.permiso_de(n) != permisos.AUTOMATICO or n not in self._esquemas:
                 continue
             e = self._esquemas[n]
-            esquema = _sin_titulos(e['schema'])
+            esquema = _sin_titulos(_resolver_refs(e['schema']))
             desc = e['description'].strip().split('\n')[0]
             out.append({'type': 'function', 'function': {'name': n, 'description': desc, 'parameters': esquema}})
         return out
@@ -183,3 +183,18 @@ def _sin_titulos(esquema):
     if isinstance(esquema, list):
         return [_sin_titulos(x) for x in esquema]
     return esquema
+
+
+def _resolver_refs(esquema: dict) -> dict:
+    """Sustituye cada {"$ref": "#/$defs/X"} por su definición y quita $defs."""
+    defs = esquema.get('$defs', {})
+
+    def r(x):
+        if isinstance(x, dict):
+            if '$ref' in x and x['$ref'].startswith('#/$defs/'):
+                return r(defs[x['$ref'].split('/')[-1]])
+            return {k: r(v) for k, v in x.items() if k != '$defs'}
+        if isinstance(x, list):
+            return [r(v) for v in x]
+        return x
+    return r(esquema)

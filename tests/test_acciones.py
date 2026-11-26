@@ -92,7 +92,7 @@ def test_plan_de_estudio_completo_en_dos_vueltas(tmp_path):
         ('leer_notas', 'automatico'), ('huecos_libres', 'automatico'), ('crear_eventos_estudio', 'automatico')]
     # opciones reproducibles en cada llamada
     for rec in cliente.recibido:
-        assert rec['options']['seed'] == 42 and rec['options']['temperature'] == 0 and rec['options']['num_predict'] == 350
+        assert rec['options']['seed'] == 42 and rec['options']['temperature'] == 0 and rec['options']['num_predict'] == 600
         assert rec['think'] is False and {t['function']['name'] for t in rec['tools']} == {'leer_notas', 'huecos_libres', 'crear_eventos_estudio'}
 
 

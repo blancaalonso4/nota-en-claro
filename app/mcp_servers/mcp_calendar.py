@@ -10,6 +10,7 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import BaseModel
 
 from app.agentes.verificador import MAX_EVENTOS, a_datetime, a_fecha
 
@@ -19,6 +20,14 @@ from .comun import ErrorGoogle, convertir_errores, limpiar_texto, llamar
 NOMBRE_CALENDARIO = 'Nota en Claro · Estudio'
 INICIO_DIA, FIN_DIA = 8, 22          # ventana de estudio de cada día (hora local)
 MIN_HUECO_MIN, MAX_HUECOS = 30, 30   # no se devuelven huecos de menos de 30 min ni más de 30 (ahorra tokens al modelo)
+
+
+class Evento(BaseModel):
+    """Una sesión de estudio. Los campos que no estén aquí (invitados, etc.) se descartan al recibir la llamada."""
+    titulo: str
+    inicio: str      # ISO 8601, por ejemplo 2026-12-02T16:00:00
+    fin: str
+    descripcion: str | None = None
 
 
 class ApiCalendar:
@@ -130,7 +139,7 @@ def construir(api=None, estado_fn=comun.leer_estado, guardar_fn=comun.guardar_es
 
     @mcp.tool()
     @convertir_errores
-    def crear_eventos_estudio(eventos: list[dict]) -> dict:
+    def crear_eventos_estudio(eventos: list[Evento]) -> dict:
         """Crea eventos de estudio (titulo, inicio, fin en ISO) en el calendario «Nota en Claro · Estudio». Sin invitados."""
         if not eventos or len(eventos) > MAX_EVENTOS:
             raise ErrorGoogle(f'Hay que crear entre 1 y {MAX_EVENTOS} eventos por llamada.')
@@ -138,7 +147,7 @@ def construir(api=None, estado_fn=comun.leer_estado, guardar_fn=comun.guardar_es
         cuerpos = []
         for ev in eventos:
             try:
-                cuerpos.append(_cuerpo_evento(ev, zona))
+                cuerpos.append(_cuerpo_evento(ev.model_dump(), zona))
             except (KeyError, ValueError, TypeError) as e:
                 raise ErrorGoogle('Un evento tiene fechas no válidas (usa ISO 8601).', detalle=str(e)) from e
         cal_id, total = asegurar_calendario()

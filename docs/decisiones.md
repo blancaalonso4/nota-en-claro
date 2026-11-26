@@ -179,3 +179,20 @@ Prueba hecha a mano por el equipo el 2026-11-26 (**observada**, una vez cada cas
 - **FALLO 2 · formulario de notas a mano:** en la barra lateral es demasiado estrecho, las casillas no se leen y no tienen cabecera.
 - **MEJORA 3 · hoja de notas:** al crearla solo se muestra el enlace; falta explicar qué hacer después.
 - Las tres correcciones se registran en las entradas siguientes, una por arreglo, con su commit.
+
+## 2026-11-26 · Sesión 5 · FALLO 1: descripciones de las intenciones del coordinador
+- **Decisión:** en `SISTEMA` (`app/agentes/coordinador.py`), `normativa` pasa a cubrir «cualquier duda sobre la PAU, el acceso o la admisión a la universidad, universidades, grados, plazas, notas de corte, plazos, requisitos, reglas o documentos oficiales»; `nota_admision` es «calcular SU nota … con sus propias notas»; `fuera_de_ambito` es «solo temas sin relación con la PAU ni con la universidad». Una petición de admisión que el RAG no pueda contestar acaba en la abstención del RAG («no consta»), no en el mensaje de fuera de ámbito.
+- **Conjunto de control (nuevo, aparte):** `data/eval/intenciones_control.json`, 10 peticiones escritas como las escribiría un estudiante (frases cortas, coloquiales, con faltas), 4 de normativa de admisión, incluida la de Medicina. Se escribió **antes** de medir y no se usó para redactar el cambio salvo lo indicado abajo. Es un conjunto pequeño: sirve para detectar fallos, no para estimar una tasa.
+- **Medido** (`eval/evaluar_coordinador.py --etiqueta antes|despues`, `qwen3:4b-instruct`, seed 42, temperature 0; salidas en `eval/salidas/coordinador_antes.*` y `coordinador_despues.*`):
+
+| | antes | después |
+|---|---|---|
+| conjunto principal (30) | 30/30 | 30/30 |
+| conjunto de control (10) | 8/10 | 9/10 |
+| tokens de entrada (media) | 188,6 | 230,6 |
+| segundos por llamada (mediana) | 2,69 | 2,73 |
+
+- **Antes fallaban:** «¿Cuántas plazas hay en Medicina en la UCM?» (→ `fuera_de_ambito`) y «cual es la nota de corte de enfermeria?» (→ `nota_admision`). **Después:** la de Medicina va a `normativa`.
+- **No resuelto:** «cual es la nota de corte de enfermeria?» sigue yendo a `nota_admision`. Se probó una segunda variante (añadir «no las notas de corte de las carreras» a `nota_admision`): mismo resultado (9/10) y +11 tokens de entrada; se descartó. No se siguió iterando para no ajustar el prompt al conjunto de control.
+- **Contra:** el prompt crece ~42 tokens (medido, 188,6 → 230,6), unos ~1,5 s de evaluación de prompt estimados a ~28 ms/token (cifra del 2026-11-26 con otro prompt; **estimado**), aunque la mediana medida apenas cambió.
+- **Descartada:** reglas por palabras clave («plaza», «UCM») que arreglarían el caso pero no los siguientes.

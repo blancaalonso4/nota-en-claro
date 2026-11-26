@@ -33,12 +33,13 @@ DIAS_POR_DEFECTO, DIAS_MAXIMOS = 7, 14
 # Prompt fijo y corto (idéntico byte a byte en cada llamada: así Ollama reutiliza su caché de prefijo).
 SISTEMA = ('Clasifica la petición de un estudiante de 2.º de Bachillerato de Madrid que prepara la PAU. '
            'Responde solo un JSON con "intencion" y "dias".\n'
-           '- normativa: dudas sobre la PAU, plazos, requisitos, reglas o documentos oficiales.\n'
-           '- nota_admision: calcular su nota de acceso o de admisión.\n'
+           '- normativa: cualquier duda sobre la PAU, el acceso o la admisión a la universidad, universidades, grados, '
+           'plazas, notas de corte, plazos, requisitos, reglas o documentos oficiales.\n'
+           '- nota_admision: calcular SU nota de acceso o de admisión con sus propias notas.\n'
            '- plan_estudio: crear un plan o calendario de estudio.\n'
            '- informe: guardar un informe de sus notas.\n'
            '- correo_orientador: escribir o responder un correo a su orientador.\n'
-           '- fuera_de_ambito: cualquier otra cosa.\n'
+           '- fuera_de_ambito: solo temas sin relación con la PAU ni con la universidad.\n'
            '"dias": días del plan de estudio si lo indica; si no, 7; null en el resto.')
 
 FUERA_DE_AMBITO = ('Solo puedo ayudarte con la PAU de Madrid: dudas de normativa, calcular tu nota de admisión, '

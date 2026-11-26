@@ -1,0 +1,12 @@
+[
+ {"peticion": "¿Cuántas plazas hay en Medicina en la UCM?", "intencion": "normativa"},
+ {"peticion": "cual es la nota de corte de enfermeria?", "intencion": "normativa"},
+ {"peticion": "cuando salen las notas de la pau", "intencion": "normativa"},
+ {"peticion": "q pasa si suspendo la pau en junio", "intencion": "normativa"},
+ {"peticion": "cuanto me sale de nota si tengo un 9 de media y un 8 en la pau", "intencion": "nota_admision"},
+ {"peticion": "ayudame con un plan pa estudiar mates y fisica esta semana", "intencion": "plan_estudio"},
+ {"peticion": "guarda un informe con mis notas pls", "intencion": "informe"},
+ {"peticion": "escribele a mi orientador que quiero quedar el jueves", "intencion": "correo_orientador"},
+ {"peticion": "dime una receta de tortilla de patatas", "intencion": "fuera_de_ambito"},
+ {"peticion": "quien es el mejor jugador de baloncesto", "intencion": "fuera_de_ambito"}
+]

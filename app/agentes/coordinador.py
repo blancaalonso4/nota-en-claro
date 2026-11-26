@@ -22,6 +22,8 @@ from . import errores_modelo
 from .nota_admision import calcular_desde_diccionario
 from .traza import Traza
 
+ORIGEN_NOTAS = {'hoja': 'He calculado tu nota con **tu hoja de Google «Mis notas»**.',
+                'formulario': 'He calculado tu nota con **las notas introducidas a mano**.'}
 INTENCIONES = ['normativa', 'nota_admision', 'plan_estudio', 'informe', 'correo_orientador', 'fuera_de_ambito']
 ESQUEMA = {'type': 'object',
            'properties': {'intencion': {'type': 'string', 'enum': INTENCIONES},
@@ -150,5 +152,7 @@ class Orquestador:
                 return {'intencion': 'nota_admision', 'error': True, 'texto': r.mensaje}
             datos = r.datos
         resultado, texto = calcular_desde_diccionario(datos)
+        # se dice con qué notas se ha calculado (la hoja de Google o la tabla manual), para que el estudiante lo pueda comprobar
+        texto = f'{ORIGEN_NOTAS[origen]}\n\n{texto}'
         return {'intencion': 'nota_admision', 'texto': texto, 'error': bool(resultado.problemas),
                 'origen_notas': origen}

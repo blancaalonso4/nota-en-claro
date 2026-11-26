@@ -185,7 +185,7 @@ def test_nota_con_notas_a_mano_sin_google(app, monkeypatch):
     assert at.session_state.notas_manuales is not None
     at.chat_input[0].set_value('calcula mi nota de admisión').run()
     assert not at.exception
-    assert any('11,524' in t for t in textos(at))
+    assert any('11,524' in t and 'las notas introducidas a mano' in t for t in textos(at))
 
 
 def test_crear_hoja_de_notas(app):

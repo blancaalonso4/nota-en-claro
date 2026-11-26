@@ -133,6 +133,8 @@ def test_nota_con_formulario_manual_funciona_sin_google_ni_segunda_llamada(tmp_p
     o, t = orq(tmp_path, 'nota_admision')
     r = eventos(o, 'Calcula mi nota de admisión', notas_manuales=NOTAS_MANUALES)[-1]['resultado']
     assert '11,524' in r['texto'] and not r['error'] and r['origen_notas'] == 'formulario'
+    assert r['texto'].startswith('He calculado tu nota con **las notas introducidas a mano**.')
+    assert 'hoja de Google' not in r['texto']
     assert len([p for p in t.pasos if p['tipo'] == 'modelo']) == 1       # solo el coordinador
 
 
@@ -144,6 +146,8 @@ def test_nota_desde_la_hoja_lee_por_mcp_sin_modelo(tmp_path):
     o, t = orq(tmp_path, 'nota_admision', puente=Puente())
     r = eventos(o)[-1]['resultado']
     assert '11,524' in r['texto'] and r['origen_notas'] == 'hoja'
+    assert r['texto'].startswith('He calculado tu nota con **tu hoja de Google «Mis notas»**.')
+    assert 'a mano' not in r['texto']
     assert [(p['tipo'], p['herramienta']) for p in t.pasos if p['tipo'] == 'herramienta'] == [('herramienta', 'leer_notas')]
 
 

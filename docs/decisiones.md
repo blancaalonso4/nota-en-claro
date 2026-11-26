@@ -204,3 +204,7 @@ Prueba hecha a mano por el equipo el 2026-11-26 (**observada**, una vez cada cas
 - **Comprobado (AppTest, tests con `pytest`):** el formulario ya no está en la barra lateral, la tabla tiene las cinco cabeceras y admite filas nuevas, y con la tabla rellenada (estado del editor fijado desde el test) «calcula mi nota de admisión» da 11,524, el mismo ejemplo de doc16. AppTest no «teclea» en el editor: se fija su estado interno, así que la edición con el ratón queda para la prueba manual.
 - **Efecto lateral:** `st.data_editor` cuenta como `dataframe` en AppTest, por lo que los tests de la traza usan ahora el último (`at.dataframe[-1]`). Se cambian además los `use_container_width` por `width='stretch'` (avisos de obsolescencia).
 - **Descartada:** mantenerlo en la barra lateral ensanchándola (no se puede fijar su ancho desde Streamlit sin CSS) y los controles sueltos por fila.
+
+## 2026-11-26 · Sesión 5 · MEJORA 3: qué hacer después de crear la hoja de notas
+- **Decisión:** tras «Crear mi hoja de notas» (y también si ya existía), además del enlace la interfaz dice: «Ábrela con la cuenta de Google conectada, rellénala y luego pídeme «calcula mi nota de admisión»» (constante `INSTRUCCIONES_HOJA` en `app/interfaz.py`).
+- **Por qué:** en la prueba manual solo salía el enlace y no quedaba claro el paso siguiente. **Comprobado con AppTest** (texto y enlace presentes); no cambia ninguna llamada a Google.

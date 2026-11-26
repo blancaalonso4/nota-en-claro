@@ -19,6 +19,9 @@ from app.tabla_notas import FASES, PONDERACIONES, tabla_a_notas, tabla_vacia  # 
 
 
 
+INSTRUCCIONES_HOJA = ('Ábrela con la cuenta de Google conectada, rellénala y luego pídeme «calcula mi nota de admisión».')
+
+
 @st.cache_resource
 def cargar_recursos():
     return servicios.crear_recursos()
@@ -90,6 +93,7 @@ def barra_lateral(recursos):
                                reintento=r.reintentos > 0)
             if r.ok:
                 st.success(('Hoja creada: ' if r.datos.get('creada') else 'Ya tenías tu hoja: ') + r.datos['url'])
+                st.markdown(INSTRUCCIONES_HOJA)
             else:
                 st.error(r.mensaje)
         st.caption('Sin Google, rellena la tabla «Introducir mis notas a mano» de la página principal.')

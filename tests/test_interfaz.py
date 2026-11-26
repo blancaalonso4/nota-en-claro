@@ -167,4 +167,5 @@ def test_nota_con_notas_a_mano_sin_google(app, monkeypatch):
 def test_crear_hoja_de_notas(app):
     at = app('normativa')
     next(b for b in at.sidebar.button if b.label == 'Crear mi hoja de notas').click().run()
-    assert any('Hoja creada' in s.value for s in at.sidebar.success)
+    assert any('Hoja creada' in s.value and 'docs.google.com/spreadsheets/d/H1' in s.value for s in at.sidebar.success)
+    assert any('Ábrela con la cuenta de Google conectada, rellénala y luego pídeme «calcula mi nota de admisión»' in m.value for m in at.sidebar.markdown)

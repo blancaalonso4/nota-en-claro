@@ -1,1 +1,1 @@
-"""Agentes (coordinador, normativa, acciones, verificador). Pendiente: sesiones siguientes."""
+"""Agentes: coordinador, acciones, calculadora de nota, verificador, permisos, traza y puente MCP."""

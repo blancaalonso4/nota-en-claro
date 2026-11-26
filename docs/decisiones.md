@@ -107,3 +107,44 @@ Todo **medido** en este portátil con `qwen3:4b-instruct` (scripts `eval/medir_p
 - **Por qué:** `pip install mcp` instaló la 2.3.0 (medido), donde `mcp.server.fastmcp` ya no existe: el import falla con un aviso de que FastMCP pasó a llamarse `MCPServer` y que otras APIs cambiaron. El enunciado pide FastMCP y la 1.x es la API que conocemos y documentamos.
 - **Descartada:** migrar a `MCPServer` de la 2.x (API sin probar en el equipo; no aporta nada que necesitemos). Si se migra, hay que tocar los tres servidores, el puente y los tests en memoria.
 - **Nota:** al volver a la 1.x quedaron restos de la 2.x (`mcp-types`, un directorio `~cp`); se desinstalaron. `pip check`: sin conflictos (medido).
+
+
+## 2026-11-26 · Sesión 4 · Arquitectura de agentes y barandillas
+Todo en `app/agentes/` y `app/mcp_servers/`. Sin frameworks de agentes: bucle propio sobre la API de Ollama.
+- **Coordinador con modelo y salida JSON restringida por esquema** (`format=` de Ollama; una llamada, `num_predict=40`). **Medido** (`eval/evaluar_coordinador.py`, 30 peticiones etiquetadas por el equipo, 5 por intención): 30/30 aciertos; 189,2 tokens de entrada de media, 3,50 s de mediana por llamada (máx. 10,71 s la primera). Salvedad: el conjunto lo escribió el equipo con el mismo estilo, es una cota optimista. **Descartada:** reglas por palabras clave (0 s pero frágiles). Coste: la normativa pasa de 1 a 2 llamadas (~3,5 s más, medido).
+- **El modelo nunca tiene la herramienta de enviar correo**: `enviar_borrador` solo se ejecuta desde el botón «Enviar» de la interfaz (`PuenteMCP.enviar_correo_confirmado`), y el servidor además exige `confirmado=True` y comprueba que el borrador va únicamente a `ORIENTADOR_EMAIL`. **Descartada:** que el modelo proponga enviar y se pida confirmación (una inyección podría provocar la propuesta).
+- **Subconjunto de herramientas por intención** (plan: leer_notas, huecos_libres, crear_eventos_estudio; informe: leer_notas, guardar_informe; correo: leer_correos_orientador, crear_borrador). Menos tokens y menos confusión. **Descartada:** ofrecer las 9 siempre. Contra: si el coordinador se equivoca de intención, falta la herramienta.
+- **Resumen final compuesto en Python**, sin vuelta extra del modelo. **Descartada:** que el modelo redacte el cierre (una llamada más, decenas de segundos en CPU).
+- **Un token por plataforma** (`token_drive.json`, `token_calendar.json`, `token_gmail.json`) en lugar del `token.json` único pedido: un servidor nunca tiene los permisos de otro. Contra: tres consentimientos. Todos cubiertos por `token*.json` en `.gitignore`.
+- **Tests con pytest** (`tests/`), sin Ollama ni Google: servidores probados en memoria con servicios falsos, agente con un Ollama guionizado.
+- **`max_vueltas=4`** en lugar de 3: un plan son 2-3 vueltas y la 4.ª deja corregir un error del verificador.
+
+## 2026-11-26 · Sesión 4 · Scopes de OAuth (mínimo privilegio)
+Nombres de los de Calendar comprobados en la documentación de Google el 2026-11-26.
+- Drive/Sheets: `drive.file` (solo los archivos que crea la app). **Descartados:** `drive`, `spreadsheets`.
+- Calendar: `calendar.app.created` (calendario propio «Nota en Claro · Estudio») + `calendar.events.freebusy` (del principal solo ocupado/libre). **Descartado:** `calendar.events`.
+- Gmail: `gmail.readonly` + `gmail.compose`. **Descartados:** `gmail.modify` y acceso total (permiten borrar).
+- **Sin verificar con Google real todavía:** que `drive.file` baste para la API de Sheets sobre la hoja creada por la app (la documentación solo describe el scope en general) y qué scope exige exactamente cada método de Gmail. Se comprueba con la prueba real tras autorizar.
+
+## 2026-11-26 · Sesión 4 · Nota de admisión en Python; ponderaciones las escribe el estudiante
+- Fórmulas del corpus: CAU = 0,6·media Bachillerato + 0,4·PAU, ≥ 5 (doc07 art. 15; doc06 §3.1); PAU = media de los ejercicios de la fase de acceso, ≥ 4 (doc07 art. 14); Admisión = CAU + a·M1 + b·M2, máximo dos materias con nota ≥ 5, máximo 14 (doc06 §5-7; doc07 art. 22.3). Redondeo a la milésima, hacia arriba en equidistancia (`Decimal`). **Medido (tests):** reproduce los ejemplos resueltos de doc16 (11,524 y 11,724) y doc15 (12,000 y 12,100).
+- **Las ponderaciones a y b no están utilizables en el corpus:** la única tabla es doc20 (Universidad de Alcalá, 2027-28) y en `data/texto/doc20.txt` se han perdido las columnas. **Decisión del equipo:** las escribe el estudiante en «Mis notas» o en el formulario manual. **Descartada:** reextraer doc20 del PDF (solo valdría para una universidad).
+- El tope de 14 es inalcanzable por encima (máx. 10 + 2·10·0,2 = 14): el código lo aplica pero no hay test que lo supere.
+
+## 2026-11-26 · Sesión 4 · OAuth en modo prueba: el refresh token caduca a los 7 días
+- La app de OAuth está en **modo prueba**: solo la pueden autorizar los usuarios de prueba y el refresh token caduca a los **7 días**.
+- **Hay que reautorizar (`python -m app.mcp_servers.autorizar`) antes de la entrega y antes de la defensa.** El servidor lo detecta (`RefreshError`) y dice al estudiante qué ejecutar.
+- Para el profesor: se le añade como usuario de prueba y se le envía `credentials.json` por un canal privado (nunca por git). Sin Google funcionan la normativa y la calculadora con notas a mano.
+- **Descartada:** publicar la app (verificación de Google, sin sentido para una cuenta demo).
+
+## 2026-11-26 · Sesión 4 · Agente de acciones con el modelo real: lo que falló y lo que se corrigió
+Todo **medido** (`eval/escenarios_acciones.py`; tanda inicial en `eval/salidas/escenarios_acciones_antes.md`, las cinco; la tanda posterior de a y b en `escenarios_acciones.md`). Herramientas de Google simuladas.
+- **Antes:** en el plan de estudio (a y b) el modelo leyó notas y huecos y **escribió el plan en prosa** (350 tokens, 0 eventos; 74 s y 71 s). Sí funcionaron: calendario lleno (24,5 s, no crea nada), sin hoja (9,1 s, mensaje claro) y correo con instrucciones inyectadas (30,7 s; solo un borrador a `orientador@ejemplo.com`, sin enviar ni borrar).
+- **Cambios (varios a la vez, no se midió cada uno por separado):** (1) esquema tipado del evento (`titulo`, `inicio`, `fin`: antes `list[dict]` y el modelo no sabía los campos), (2) el puente resuelve los `$ref` del esquema, (3) el prompt dice que no escriba el plan en texto y se añade un recordatorio tras los huecos, (4) máximo 6 sesiones en el prompt, (5) `num_predict` del agente 350 → 600 (con 350, Ollama devolvía un 500 porque el JSON de la llamada se cortaba), (6) las notas se presentan ordenadas de peor a mejor.
+- **Después (a y b):** 3 vueltas; a: 4 eventos (Física 1, Matemáticas 1, Química 1, Historia 1), 78,0 s; b: 5 eventos, todos de Historia, 142,6 s. El reparto cambia con las notas (decide), pero **con Física floja solo da 1 sesión a Física**: la priorización de un modelo de 4B es floja. No resuelto.
+- Un error 500 de Ollama al cortarse el JSON se informa hoy como «No he podido hablar con el modelo local»: mensaje poco preciso, pendiente.
+
+## 2026-11-26 · Sesión 4 · Interfaz
+- Chat con coordinador → trabajador; streaming solo en normativa; borrador pendiente con «Enviar al orientador» / «Descartar» (descartar deja el borrador en Gmail, no lo borra); formulario «Introducir mis notas a mano» (alternativa a leerlas de Drive); panel «Traza de la sesión» (`logs/sesion_*.jsonl`).
+- Las pruebas con `AppTest` destaparon un fallo real: la clave del formulario chocaba con `session_state['notas_manuales']` y la interfaz se rompía al abrirse. Corregido.
+- **Sin probar:** ejecución real de la interfaz con Ollama y Google (solo `AppTest` con falsos).

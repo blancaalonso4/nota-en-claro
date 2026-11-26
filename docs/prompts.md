@@ -25,3 +25,13 @@ Dos tareas en orden: (1) diagnosticar por qué la primera ejecución en frío da
 >
 > No cambies el contenido del prompt; solo su orden. Documenta todo, haz commit y push, y dame el resumen con las cifras.
 
+
+## Sesión 4 · agentes y plataformas MCP
+> Sesión 4. Lee CLAUDE.md, docs/decisiones.md y README.md. Vamos a construir los agentes y las 3 plataformas MCP. Quiero primero un plan; no escribas código hasta que lo apruebe.
+>
+> Contexto: modelo único qwen3:4b-instruct en Ollama (CPU, ~36 tokens/s de lectura de prompt): diseña para el mínimo número de llamadas y prompts cortos. credentials.json en la raíz; el token va a token.json, fuera de git; cuenta de Google demo. Arquitectura: coordinador que clasifica (normativa, nota de admisión, plan de estudio, informe, correo al orientador, fuera de ámbito) con JSON corto; agente de normativa (RAG sin cambios, nunca ve Drive ni Gmail); agente de acciones (tool calling de Ollama sobre MCP, máximo de vueltas, num_predict acotado, decide de verdad); nota de admisión en Python según el corpus (si faltan fórmulas o tablas, avisar antes de inventar); verificador en Python (citas y argumentos de herramientas). Servidores MCP con FastMCP (stdio), uno por plataforma, permisos mínimos: Drive/Sheets («Mis notas», leer, informe), Calendar (listar, crear eventos), Gmail (leer correos del orientador, borrador, enviar solo tras confirmación en la interfaz). Barandillas: permiso por herramienta (automático/confirmar/prohibido), contenido de Drive y Gmail como datos delimitados, destinatario solo el orientador de .env, un reintento y mensaje claro si falla Google. Traza JSONL en logs/ con herramienta, permiso, tokens y segundos por paso, y panel en la interfaz. En el plan: diagrama, scopes y motivos, herramientas con permiso, pruebas, orden y decisiones discutibles.
+
+Cambios al aprobar el plan:
+> 1. Commit y push al terminar cada bloque del orden de construcción, sin esperar a que lo pida, con git status antes de cada commit.
+> 2. En el README, un apartado «Usar la parte de Google»: app de OAuth en modo prueba (solo usuarios de prueba); al profesor se le añade como usuario de prueba y se le envía credentials.json por un canal privado (nunca por git); sin Google funcionan la normativa y la calculadora con notas introducidas a mano. Añadir esa entrada manual de notas en la interfaz.
+> 3. Anotar en docs/decisiones.md que el refresh token caduca a los 7 días en modo prueba y que hay que reautorizar antes de la entrega y de la defensa.

@@ -171,3 +171,11 @@ Todo **medido** (`eval/escenarios_acciones.py`; tanda inicial en `eval/salidas/e
 - **Por qué:** con un 500 el mensaje antiguo mandaba al estudiante a «comprobar que Ollama está abierto», cuando Ollama estaba funcionando y lo útil era reformular o pedirlo más corto.
 - **Medido (Ollama real, 2026-11-26):** puerto cerrado → `ConnectionError` → «No puedo conectar con Ollama…»; escenario b con `num_predict=120` → la llamada a `crear_eventos_estudio` se corta → «La respuesta del modelo se cortó…». Tests: `tests/test_errores_modelo.py`.
 - **Límite:** la clasificación del corte se apoya en el texto del error de Ollama/llama-server (**observado** en este equipo con esta versión); si una versión futura cambia esa frase, el caso caería en «error interno». **Descartada:** subir `num_predict` para que no ocurra (ya se subió a 600 y el mensaje sigue haciendo falta para peticiones largas). No se tocó el agente de normativa (el RAG no captura excepciones del modelo, queda como estaba).
+
+## 2026-11-26 · Sesión 5 · Prueba manual de la interfaz con Ollama y Google reales
+Prueba hecha a mano por el equipo el 2026-11-26 (**observada**, una vez cada caso; sin cifras de tiempo ni de tokens).
+- **OK:** duda de normativa con cita («revisión: tres días hábiles», doc13) y petición fuera de ámbito («¿Quién ganó el último Mundial?»).
+- **FALLO 1 · coordinador:** «¿Cuántas plazas hay en Medicina en la UCM?» se clasificó como `fuera_de_ambito`; debía ir a normativa y que el RAG dijera que no consta.
+- **FALLO 2 · formulario de notas a mano:** en la barra lateral es demasiado estrecho, las casillas no se leen y no tienen cabecera.
+- **MEJORA 3 · hoja de notas:** al crearla solo se muestra el enlace; falta explicar qué hacer después.
+- Las tres correcciones se registran en las entradas siguientes, una por arreglo, con su commit.

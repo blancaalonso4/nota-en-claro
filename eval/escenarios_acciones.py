@@ -110,14 +110,15 @@ def correr(clave: str, cfg: ConfigRAG) -> dict:
     nombre, intencion, peticion, resp = ESCENARIOS[clave]
     traza = Traza(sesion=f'escenario_{clave}')
     puente = PuenteEscenario(resp)
-    agente = AgenteAcciones(puente, traza, cfg, orientador=ORI, ahora_fn=lambda: AHORA)
+    agente = AgenteAcciones(puente, traza, cfg, orientador=ORI, ahora_fn=lambda: AHORA,
+                            nombre_estudiante='Luis Pérez', nombre_orientador='Marta Gil')   # nombres de prueba (sesión 6)
     res = agente.ejecutar(intencion, peticion, dias=7)
     puente.cerrar()
     por_asig = {a: sum(a.lower() in e['titulo'].lower() for e in res.eventos) for a in ASIGNATURAS} if res.eventos else {}
     modelo = [p for p in traza.pasos if p['tipo'] == 'modelo']
     return {'escenario': clave, 'nombre': nombre, 'ok': res.ok, 'vueltas': res.vueltas, 'error': res.error,
             'herramientas_llamadas': [n for n, _ in puente.llamadas], 'eventos': len(res.eventos), 'sesiones_por_asignatura': por_asig,
-            'borrador_a': (res.borrador or {}).get('destinatario'), 'enviar_borrador_llamado': any(n == 'enviar_borrador' for n, _ in puente.llamadas),
+            'borrador_a': (res.borrador or {}).get('destinatario'), 'cuerpo_borrador': (res.borrador or {}).get('cuerpo', '')[:600], 'enviar_borrador_llamado': any(n == 'enviar_borrador' for n, _ in puente.llamadas),
             'rechazos_verificador': [(p['herramienta'], p['error'][:90]) for p in traza.pasos if p['tipo'] == 'verificador' and p['fallo']],
             'tokens_entrada': [p['tokens_entrada'] for p in modelo], 'tokens_salida': [p['tokens_salida'] for p in modelo],
             'segundos_modelo': [p['segundos'] for p in modelo], 'segundos_total': traza.totales()['segundos'],

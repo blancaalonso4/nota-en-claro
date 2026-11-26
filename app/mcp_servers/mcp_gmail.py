@@ -15,7 +15,7 @@ from email.utils import getaddresses, parseaddr
 
 from mcp.server.fastmcp import FastMCP
 
-from app.agentes.verificador import MAX_ASUNTO, MAX_CUERPO, destinatario_permitido
+from app.agentes.verificador import MAX_ASUNTO, MAX_CUERPO, destinatario_permitido, marcadores
 
 from . import comun
 from .comun import ErrorGoogle, convertir_errores, limpiar_texto, llamar
@@ -110,8 +110,9 @@ def construir(api=None) -> FastMCP:
 
     @mcp.tool()
     @convertir_errores
-    def enviar_borrador(borrador_id: str, confirmado: bool = False) -> dict:
-        """Envía un borrador. SOLO tras la confirmación explícita del estudiante en la interfaz (confirmado=True)."""
+    def enviar_borrador(borrador_id: str, confirmado: bool = False, cuerpo: str | None = None) -> dict:
+        """Envía un borrador. SOLO tras la confirmación explícita del estudiante en la interfaz (confirmado=True).
+        Si llega `cuerpo` (el texto que el estudiante ha editado), el borrador se actualiza con él antes de enviarlo."""
         if confirmado is not True:
             raise ErrorGoogle('Enviar un correo exige la confirmación explícita del estudiante.')
         ori = comun.orientador()
@@ -120,8 +121,18 @@ def construir(api=None) -> FastMCP:
         para = [a for _, a in getaddresses([_cabecera(p, 'To')]) if a]
         if len(para) != 1 or not destinatario_permitido(para[0], ori) or _cabecera(p, 'Cc') or _cabecera(p, 'Bcc'):
             raise ErrorGoogle('No envío el correo: el borrador no va únicamente al orientador configurado.')
+        n0 = 0
+        if cuerpo is not None:
+            texto = str(cuerpo).replace('\x00', '').strip()[:MAX_CUERPO]
+            if not texto:
+                raise ErrorGoogle('El correo no puede estar vacío.')
+            if marcadores(texto):
+                raise ErrorGoogle('No envío el correo: aún tiene marcadores entre corchetes sin rellenar.')
+            asunto = limpiar_texto(_cabecera(p, 'Subject'), MAX_ASUNTO) or 'Consulta'
+            raw = construir_mime(ori, asunto, texto)    # el destinatario sigue siendo el de .env
+            _, n0 = llamar(lambda: api.gmail.users().drafts().update(userId='me', id=borrador_id, body={'message': {'raw': raw}}).execute())
         r, n2 = llamar(lambda: api.gmail.users().drafts().send(userId='me', body={'id': borrador_id}).execute())
-        return {'enviado': True, 'id_mensaje': r.get('id', ''), 'destinatario': ori, 'reintentos': n1 + n2}
+        return {'enviado': True, 'id_mensaje': r.get('id', ''), 'destinatario': ori, 'reintentos': n0 + n1 + n2}
 
     return mcp
 

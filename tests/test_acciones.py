@@ -255,3 +255,37 @@ def test_huecos_a_texto_numerados():
     assert ac.huecos_a_texto([]) == 'No hay huecos libres en ese rango.'
     t = ac.huecos_a_texto(HUECOS['huecos'])
     assert '1: miércoles 2 dic, 16:00-20:00 (240 min)' in t and '2: jueves 3 dic, 10:00-13:00 (180 min)' in t
+
+
+# --- correo con nombres y sin marcadores (sesión 6) -----------------------------------------------------------------------
+
+def test_el_prompt_del_correo_lleva_los_nombres_y_prohibe_corchetes(tmp_path):
+    cliente = OllamaGuionizado(respuesta(llamada('crear_borrador', asunto='Duda', cuerpo='Hola, Marta.\n\nUn saludo,\nLuis')))
+    puente = PuenteFalso({'crear_borrador': ok({'borrador_id': 'R1', 'destinatario': ORI, 'asunto': 'Duda', 'cuerpo': 'x'})})
+    a = ac.AgenteAcciones(puente, Traza(tmp_path, sesion='t'), cliente=cliente, orientador=ORI, ahora_fn=lambda: AHORA,
+                          nombre_estudiante='Luis Pérez', nombre_orientador='Marta Gil')
+    a.ejecutar('correo_orientador', 'escribe a mi orientador')
+    sistema = cliente.recibido[0]['messages'][0]['content']
+    assert 'empieza con «Hola, Marta Gil.»' in sistema and 'llama SIEMPRE a crear_borrador' in sistema and '«Luis Pérez»' in sistema and 'marcadores entre corchetes' in sistema
+
+
+def test_sin_nombres_en_env_el_prompt_no_inventa_ninguno(tmp_path):
+    cliente = OllamaGuionizado(respuesta(llamada('crear_borrador', asunto='Duda', cuerpo='Hola, tengo una duda.')))
+    puente = PuenteFalso({'crear_borrador': ok({'borrador_id': 'R1', 'destinatario': ORI, 'asunto': 'Duda', 'cuerpo': 'x'})})
+    a, _ = agente(tmp_path, cliente, puente)
+    a.ejecutar('correo_orientador', 'escribe a mi orientador')
+    sistema = cliente.recibido[0]['messages'][0]['content']
+    assert 'empieza con «Hola,»' in sistema and 'sin firmar con ningún nombre' in sistema
+
+
+def test_borrador_con_marcadores_se_rechaza_y_el_modelo_lo_corrige(tmp_path):
+    cliente = OllamaGuionizado(
+        respuesta(llamada('crear_borrador', asunto='Duda', cuerpo='Hola [Nombre del orientador],\n\nUn saludo,\n[Tu nombre]')),
+        respuesta(llamada('crear_borrador', asunto='Duda', cuerpo='Hola, Marta Gil,\n\nUn saludo,\nLuis Pérez')))
+    puente = PuenteFalso({'crear_borrador': ok({'borrador_id': 'R9', 'destinatario': ORI, 'asunto': 'Duda', 'cuerpo': 'Hola, Marta Gil'})})
+    a, traza = agente(tmp_path, cliente, puente)
+    r = a.ejecutar('correo_orientador', 'escribe a mi orientador')
+    assert r.ok and r.vueltas == 2 and [n for n, _ in puente.llamadas] == ['crear_borrador']    # el borrador con corchetes no llegó a Gmail
+    assert 'Marta Gil' in puente.llamadas[0][1]['cuerpo'] and '[' not in puente.llamadas[0][1]['cuerpo']
+    fallos = [p for p in traza.pasos if p['tipo'] == 'verificador' and p['fallo']]
+    assert len(fallos) == 1 and 'corchetes' in fallos[0]['error']

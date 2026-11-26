@@ -4,6 +4,7 @@ Está separado de `interfaz.py` para poder sustituirlo por falsos en las pruebas
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 from app.agentes.acciones import AgenteAcciones
@@ -37,9 +38,16 @@ def orientador() -> str | None:
         return None
 
 
+def nombres() -> tuple[str, str]:
+    """(estudiante, orientador) de .env, para el saludo y la firma del correo. Vacíos si no están rellenos."""
+    return os.environ.get('NOMBRE_ESTUDIANTE', '').strip(), os.environ.get('NOMBRE_ORIENTADOR', '').strip()
+
+
 def crear_orquestador(recursos: Recursos, traza: Traza) -> Orquestador:
     coord = Coordinador(traza, recursos.cfg)
-    acciones = AgenteAcciones(recursos.puente, traza, recursos.cfg, orientador=orientador(), zona=comun.zona_horaria())
+    estudiante, nombre_ori = nombres()
+    acciones = AgenteAcciones(recursos.puente, traza, recursos.cfg, orientador=orientador(), zona=comun.zona_horaria(),
+                              nombre_estudiante=estudiante, nombre_orientador=nombre_ori)
     return Orquestador(coord, traza, rag=recursos.rag, acciones=acciones, puente=recursos.puente)
 
 
@@ -49,4 +57,4 @@ def estado_google() -> dict:
     ori = orientador()
     return {'credenciales': comun.CREDENCIALES.exists(), 'tokens': tokens, 'orientador': ori,
             'lista': comun.CREDENCIALES.exists() and all(tokens.values()) and ori is not None,
-            'hoja_notas_id': comun.leer_estado().get('hoja_notas_id')}
+            'hoja_notas_id': comun.leer_estado().get('hoja_notas_id'), 'nombres': all(nombres())}

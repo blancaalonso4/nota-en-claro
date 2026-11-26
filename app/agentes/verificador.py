@@ -6,6 +6,7 @@ para que corrija la llamada. La validación de citas del RAG sigue en `app/rag/c
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -26,9 +27,16 @@ CLAVES_PERMITIDAS: dict[str, set[str]] = {
     'crear_eventos_estudio': {'eventos'},
     'leer_correos_orientador': {'max'},
     'crear_borrador': {'asunto', 'cuerpo'},
-    'enviar_borrador': {'borrador_id'},
+    'enviar_borrador': {'borrador_id', 'cuerpo'},
 }
 CLAVES_EVENTO = {'titulo', 'inicio', 'fin', 'descripcion'}
+
+_RE_MARCADOR = re.compile(r'\[[^\]\n]*\]')
+
+
+def marcadores(texto) -> list[str]:
+    """Marcadores entre corchetes sin rellenar, como «[Nombre del orientador]» o «[Tu nombre]». Lista vacía si no hay."""
+    return _RE_MARCADOR.findall(str(texto or ''))
 
 
 @dataclass
@@ -170,6 +178,10 @@ def verificar(herramienta: str, args, *, ahora: datetime | None = None, zona: st
             r.error(f'el asunto es obligatorio y de máximo {MAX_ASUNTO} caracteres')
         if not isinstance(c, str) or not c.strip() or len(c) > MAX_CUERPO:
             r.error(f'el cuerpo es obligatorio y de máximo {MAX_CUERPO} caracteres')
+        huecos_sin_rellenar = marcadores(a) + marcadores(c)
+        if huecos_sin_rellenar:
+            r.error(f'el borrador contiene marcadores entre corchetes sin rellenar ({", ".join(huecos_sin_rellenar[:3])}): '
+                    'escribe el texto final, con los nombres reales y sin corchetes')
         if not orientador:
             r.error('no hay ORIENTADOR_EMAIL configurado en .env')   # el servidor pone el destinatario desde .env
     elif herramienta == 'leer_correos_orientador':
@@ -181,6 +193,13 @@ def verificar(herramienta: str, args, *, ahora: datetime | None = None, zona: st
             r.error('enviar un correo exige la confirmación explícita del estudiante')
         if not isinstance(args.get('borrador_id'), str) or not args['borrador_id'].strip():
             r.error('falta «borrador_id»')
+        if 'cuerpo' in args:       # texto editado por el estudiante en la interfaz
+            c = args['cuerpo']
+            if not isinstance(c, str) or not c.strip() or len(c) > MAX_CUERPO:
+                r.error(f'el texto del correo es obligatorio y de máximo {MAX_CUERPO} caracteres')
+            elif marcadores(c):
+                r.error(f'el texto contiene marcadores entre corchetes sin rellenar ({", ".join(marcadores(c)[:3])}): '
+                        'sustitúyelos por el texto real antes de enviar')
         if not orientador:
             r.error('no hay ORIENTADOR_EMAIL configurado en .env')
     return r

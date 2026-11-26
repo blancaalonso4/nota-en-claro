@@ -44,10 +44,11 @@ class AccionesFalso:
 
 class PuenteFalso:
     def __init__(self):
-        self.enviados = []
+        self.enviados, self.cuerpos = [], []
 
-    def enviar_correo_confirmado(self, borrador_id, orientador):
+    def enviar_correo_confirmado(self, borrador_id, orientador, cuerpo=None):
         self.enviados.append((borrador_id, orientador))
+        self.cuerpos.append(cuerpo)
         return ResultadoLlamada(True, datos={'enviado': True}, segundos=0.4)
 
     def llamar(self, nombre, args=None):
@@ -107,6 +108,29 @@ def test_correo_muestra_el_borrador_y_enviar_exige_pulsar_el_boton(app):
     assert app.puente.enviados == [('R1', ORI)]
     assert any('Correo enviado' in t for t in textos(at)) and not any('Borrador pendiente' in s.value for s in at.subheader)
     assert any(p == 'confirmar' for p in at.dataframe[-1].value['permiso'])    # el envío queda en la traza con su permiso
+
+
+def test_el_borrador_sale_en_una_caja_editable_y_se_envia_el_texto_editado(app):
+    at = app('correo_orientador')
+    at.chat_input[0].set_value('escribe a mi orientador').run()
+    caja = at.text_area[0]
+    assert caja.value == 'Hola, ¿nos vemos el jueves?'            # el texto del borrador, editable
+    caja.set_value('Hola, Marta. ¿Nos vemos el viernes?\n\nUn saludo, Luis.').run()
+    assert not app.puente.enviados                                 # editar no envía nada
+    next(b for b in at.button if b.label == 'Enviar al orientador').click().run()
+    assert app.puente.enviados == [('R1', ORI)]
+    assert app.puente.cuerpos == ['Hola, Marta. ¿Nos vemos el viernes?\n\nUn saludo, Luis.']      # lo editado, no el original
+
+
+def test_no_se_envia_un_texto_con_marcadores_ni_vacio(app):
+    at = app('correo_orientador')
+    at.chat_input[0].set_value('escribe a mi orientador').run()
+    for malo, frase in (('Hola [Nombre del orientador]', 'huecos por rellenar'), ('   ', 'vacío')):
+        at.text_area[0].set_value(malo).run()
+        next(b for b in at.button if b.label == 'Enviar al orientador').click().run()
+        assert any(frase in e.value for e in at.error), malo
+    assert app.puente.enviados == []
+    assert any('Borrador pendiente' in s.value for s in at.subheader)     # el borrador sigue pendiente
 
 
 def test_descartar_no_envia(app):

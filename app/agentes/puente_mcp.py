@@ -137,12 +137,14 @@ class PuenteMCP:
             return ResultadoLlamada(False, mensaje=f'«{nombre}» no se puede ejecutar de forma automática.')
         return self._llamar(nombre, args or {})
 
-    def enviar_correo_confirmado(self, borrador_id: str, orientador: str) -> ResultadoLlamada:
-        """Envío tras pulsar «Enviar» en la interfaz. Vuelve a verificar y el servidor comprueba el destinatario."""
-        v = verificar('enviar_borrador', {'borrador_id': borrador_id}, orientador=orientador, confirmado_por_usuario=True)
+    def enviar_correo_confirmado(self, borrador_id: str, orientador: str, cuerpo: str | None = None) -> ResultadoLlamada:
+        """Envío tras pulsar «Enviar» en la interfaz. Vuelve a verificar y el servidor comprueba el destinatario.
+        `cuerpo` es el texto editado por el estudiante: si llega, es lo que se envía (el servidor actualiza el borrador)."""
+        args = {'borrador_id': borrador_id} | ({'cuerpo': cuerpo} if cuerpo is not None else {})
+        v = verificar('enviar_borrador', args, orientador=orientador, confirmado_por_usuario=True)
         if not v.ok:
             return ResultadoLlamada(False, mensaje=str(v))
-        return self._llamar('enviar_borrador', {'borrador_id': borrador_id, 'confirmado': True})
+        return self._llamar('enviar_borrador', args | {'confirmado': True})
 
     def _llamar(self, nombre: str, args: dict) -> ResultadoLlamada:
         self.iniciar()

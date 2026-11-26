@@ -179,3 +179,19 @@ def test_los_errores_dicen_al_modelo_como_corregir():
     assert 'dura 240 min' in texto and 'fin = inicio + 60 a 120 min' in texto
     texto = str(eventos([ev('2026-12-06T16:00:00+01:00', '2026-12-06T17:00:00+01:00')]))
     assert 'los huecos son: 2026-12-02 16:00-20:00' in texto
+
+
+# --- marcadores entre corchetes (sesión 6) ---------------------------------------------------------------------------
+
+def test_borrador_con_marcadores_entre_corchetes_se_rechaza():
+    for cuerpo in ('Hola [Nombre del orientador], quería preguntarte...', 'Gracias.\n[Tu nombre]', 'Hola [ ]'):
+        r = v('crear_borrador', {'asunto': 'Duda', 'cuerpo': cuerpo})
+        assert not r.ok and 'corchetes' in str(r), cuerpo
+    assert not v('crear_borrador', {'asunto': 'Cita [fecha]', 'cuerpo': 'Hola, Marta.'}).ok     # también en el asunto
+    assert v('crear_borrador', {'asunto': 'Duda', 'cuerpo': 'Hola, Marta. Un saludo, Luis.'}).ok
+
+
+def test_enviar_con_texto_editado_se_verifica():
+    assert v('enviar_borrador', {'borrador_id': 'r1', 'cuerpo': 'Hola, Marta.'}, confirmado_por_usuario=True).ok
+    for malo in ('', '   ', 'Hola [Tu nombre]', 'x' * 3001, None):
+        assert not v('enviar_borrador', {'borrador_id': 'r1', 'cuerpo': malo}, confirmado_por_usuario=True).ok, malo

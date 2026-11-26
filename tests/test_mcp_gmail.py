@@ -139,3 +139,45 @@ def test_extraer_texto_prefiere_texto_plano():
     p = {'mimeType': 'multipart/alternative', 'parts': [{'mimeType': 'text/plain', 'body': {'data': b64('plano')}},
                                                          {'mimeType': 'text/html', 'body': {'data': b64('<b>html</b>')}}]}
     assert mcp_gmail.extraer_texto(p) == 'plano'
+
+
+def test_enviar_con_texto_editado_actualiza_el_borrador_antes_de_enviar():
+    mcp, api = servidor()
+    dr = api.gmail.users.return_value.drafts.return_value
+    dr.get.return_value.execute.return_value = borrador(ORI, {'Subject': 'Duda sobre la PAU'})
+    dr.update.return_value.execute.return_value = {'id': 'R1'}
+    dr.send.return_value.execute.return_value = {'id': 'M1'}
+    error, r = llamar_herramienta(mcp, 'enviar_borrador', {'borrador_id': 'R1', 'confirmado': True, 'cuerpo': 'Hola, Marta.\n\nUn saludo, Luis.'})
+    assert not error and r['enviado'] is True
+    assert dr.update.call_args.kwargs['id'] == 'R1'
+    msg = email.message_from_bytes(base64.urlsafe_b64decode(dr.update.call_args.kwargs['body']['message']['raw']))
+    assert msg['To'] == ORI and msg['Subject'] == 'Duda sobre la PAU' and 'Un saludo, Luis.' in msg.get_payload(decode=True).decode()
+    assert msg['Cc'] is None and msg['Bcc'] is None
+    assert dr.send.call_args.kwargs['body'] == {'id': 'R1'}
+
+
+def test_enviar_sin_texto_editado_no_toca_el_borrador():
+    mcp, api = servidor()
+    dr = api.gmail.users.return_value.drafts.return_value
+    dr.get.return_value.execute.return_value = borrador(ORI)
+    dr.send.return_value.execute.return_value = {'id': 'M1'}
+    error, _ = llamar_herramienta(mcp, 'enviar_borrador', {'borrador_id': 'R1', 'confirmado': True})
+    assert not error and not dr.update.called
+
+
+def test_enviar_texto_con_marcadores_o_vacio_no_envia():
+    mcp, api = servidor()
+    dr = api.gmail.users.return_value.drafts.return_value
+    dr.get.return_value.execute.return_value = borrador(ORI)
+    for malo, frase in (('Hola [Tu nombre]', 'corchetes'), ('   ', 'vacío')):
+        error, texto = llamar_herramienta(mcp, 'enviar_borrador', {'borrador_id': 'R1', 'confirmado': True, 'cuerpo': malo})
+        assert error and frase in texto
+    assert not dr.update.called and not dr.send.called
+
+
+def test_el_texto_editado_no_cambia_el_destinatario():
+    mcp, api = servidor()
+    dr = api.gmail.users.return_value.drafts.return_value
+    dr.get.return_value.execute.return_value = borrador('otro@ejemplo.com')     # el borrador original ya no va al orientador
+    error, texto = llamar_herramienta(mcp, 'enviar_borrador', {'borrador_id': 'R1', 'confirmado': True, 'cuerpo': 'Hola'})
+    assert error and 'únicamente al orientador' in texto and not dr.update.called and not dr.send.called

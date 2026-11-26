@@ -15,6 +15,7 @@ import streamlit as st  # noqa: E402
 
 from app import servicios  # noqa: E402
 from app.agentes.traza import Traza  # noqa: E402
+from app.agentes.verificador import marcadores  # noqa: E402
 from app.tabla_notas import FASES, PONDERACIONES, tabla_a_notas, tabla_vacia  # noqa: E402
 
 
@@ -86,6 +87,8 @@ def barra_lateral(recursos):
                 st.caption(f'Falta autorizar: {", ".join(faltan)}. Ejecuta `python -m app.mcp_servers.autorizar`.')
             if g['orientador'] is None:
                 st.caption('Falta `ORIENTADOR_EMAIL` en el archivo `.env` (mira `.env.example`).')
+        if not g.get('nombres', True):
+            st.caption('Rellena `NOMBRE_ESTUDIANTE` y `NOMBRE_ORIENTADOR` en `.env` para que el correo salga con saludo y firma.')
         if st.button('Crear mi hoja de notas', disabled=not g['credenciales']):
             r = recursos.puente.llamar('crear_plantilla_notas')
             ss.traza.registrar('herramienta', 'interfaz', herramienta='crear_plantilla_notas', permiso='automatico',
@@ -106,11 +109,20 @@ def tarjeta_borrador(recursos):
     with st.container(border=True):
         st.subheader('Borrador pendiente (aún NO enviado)')
         st.markdown(f"**Para:** {b['destinatario']}  \n**Asunto:** {b['asunto']}")
-        st.text(b['cuerpo'])
+        # caja editable: lo que se envía es el texto que haya aquí cuando se pulsa el botón, no el del borrador original
+        texto = st.text_area('Texto del correo (puedes editarlo antes de enviarlo)', value=b['cuerpo'], height=280,
+                             key=f"cuerpo_{b['borrador_id']}")
         c1, c2 = st.columns(2)
         if c1.button('Enviar al orientador', type='primary'):
+            pendientes = marcadores(texto)
+            if not texto.strip():
+                st.error('El correo está vacío: escribe el texto antes de enviarlo.')
+                return
+            if pendientes:
+                st.error(f"Aún hay huecos por rellenar ({', '.join(pendientes[:3])}). Sustitúyelos por el texto real y vuelve a pulsar «Enviar».")
+                return
             t0 = time.perf_counter()
-            r = recursos.puente.enviar_correo_confirmado(b['borrador_id'], b['destinatario'])
+            r = recursos.puente.enviar_correo_confirmado(b['borrador_id'], b['destinatario'], cuerpo=texto)
             ss.traza.registrar('herramienta', 'interfaz', herramienta='enviar_borrador', permiso='confirmar',
                                segundos=time.perf_counter() - t0, fallo=not r.ok, error=(r.detalle or r.mensaje) if not r.ok else '',
                                reintento=r.reintentos > 0, confirmado_por_usuario=True)

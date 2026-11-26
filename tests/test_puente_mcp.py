@@ -74,6 +74,17 @@ def test_enviar_confirmado_pasa_por_verificador_y_servidor(puente):
     assert not r.ok and 'únicamente al orientador' in r.mensaje and dr.send.call_count == 1
 
 
+def test_enviar_confirmado_con_texto_editado_envia_ese_texto(puente):
+    dr = puente.apis['gmail'].gmail.users.return_value.drafts.return_value
+    dr.get.return_value.execute.return_value = {'message': {'payload': {'headers': [{'name': 'To', 'value': ORI}, {'name': 'Subject', 'value': 'Duda'}]}}}
+    dr.update.return_value.execute.return_value = {'id': 'R1'}
+    dr.send.return_value.execute.return_value = {'id': 'M1'}
+    assert puente.enviar_correo_confirmado('R1', ORI, cuerpo='Hola, Marta. Un saludo, Luis.').ok
+    assert dr.update.call_count == 1 and dr.send.call_count == 1
+    r = puente.enviar_correo_confirmado('R1', ORI, cuerpo='Hola [Tu nombre]')      # lo para el verificador
+    assert not r.ok and 'corchetes' in r.mensaje and dr.send.call_count == 1
+
+
 def test_arranque_real_por_stdio_lista_las_nueve_herramientas():
     """Lanza los tres servidores como subprocesos (como en la app). No llama a Google."""
     p = PuenteMCP()

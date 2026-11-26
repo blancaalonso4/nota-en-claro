@@ -64,6 +64,16 @@ class ResultadoAcciones:
     borrador: dict | None = None      # {'borrador_id','destinatario','asunto','cuerpo'}: la interfaz pide la confirmación
 
 
+def instrucciones_nombres(estudiante: str, orientador: str) -> str:
+    """Saludo y firma del correo con los nombres de .env, y la prohibición de dejar marcadores entre corchetes."""
+    saludo = f' El cuerpo empieza con «Hola, {orientador}.»' if orientador else ' El cuerpo empieza con «Hola,» (no sabes cómo se llama).'
+    firma = (f' y termina con «Un saludo,» y la firma «{estudiante}».' if estudiante
+             else ' y termina con «Un saludo.» sin firmar con ningún nombre (no sabes cómo se llama el estudiante).')
+    return (' Para escribirlo llama SIEMPRE a crear_borrador; no escribas el correo en tu respuesta.' + saludo + firma
+            + ' Escribe el texto FINAL: nunca uses marcadores entre corchetes como [Nombre] ni dejes huecos '
+            'para rellenar; si no sabes un dato, no lo pongas.')
+
+
 def _fecha_es(d: datetime) -> str:
     return f'{DIAS_ES[d.weekday()]} {d.day} {MESES_ES[d.month - 1]}'
 
@@ -88,8 +98,10 @@ def huecos_a_texto(huecos: list[dict]) -> str:
 
 class AgenteAcciones:
     def __init__(self, puente, traza: Traza, cfg: ConfigRAG | None = None, cliente=None, orientador: str | None = None,
-                 zona: str = 'Europe/Madrid', ahora_fn=None, max_vueltas: int = MAX_VUELTAS):
+                 zona: str = 'Europe/Madrid', ahora_fn=None, max_vueltas: int = MAX_VUELTAS,
+                 nombre_estudiante: str | None = None, nombre_orientador: str | None = None):
         self.puente, self.traza, self.cfg = puente, traza, cfg or ConfigRAG()
+        self.nombre_estudiante, self.nombre_orientador = (nombre_estudiante or '').strip(), (nombre_orientador or '').strip()
         self.cliente = cliente or ollama.Client()
         self.orientador, self.zona, self.max_vueltas = orientador, zona, max_vueltas
         self._ahora = ahora_fn or (lambda: datetime.now(ZoneInfo(zona)))
@@ -109,7 +121,9 @@ class AgenteAcciones:
         usuario = (f'Hoy es {_fecha_es(ahora)} de {ahora.year} ({ahora.date().isoformat()}). Petición: {peticion.strip()[:400]}'
                    + (f' Plan para los próximos {dias} días: de {ahora.date().isoformat()} a {hasta.date().isoformat()}.'
                       if intencion == 'plan_estudio' else ''))
-        mensajes = [{'role': 'system', 'content': SISTEMA[intencion]}, {'role': 'user', 'content': usuario}]
+        sistema = SISTEMA[intencion] + (instrucciones_nombres(self.nombre_estudiante, self.nombre_orientador)
+                                        if intencion == 'correo_orientador' else '')
+        mensajes = [{'role': 'system', 'content': sistema}, {'role': 'user', 'content': usuario}]
         nombres = herramientas_de(intencion)
         tools = self.puente.herramientas([n for n in nombres if n != 'planificar_sesiones'])
         if 'planificar_sesiones' in nombres:

@@ -14,7 +14,7 @@ Web app para estudiantes de 2.º de Bachillerato en Madrid que preparan la PAU. 
 
 ## Arquitectura prevista
 - Coordinador (`qwen3:4b-instruct`) que enruta a:
-  - agente de normativa (RAG, `qwen3:8b` sin razonamiento),
+  - agente de normativa (RAG, `qwen3:4b-instruct` sin razonamiento; `qwen3:8b` retirado el 2026-11-26, ver `docs/decisiones.md`),
   - agente de acciones (MCP a Google Drive, Calendar y Gmail),
   - verificador de citas en Python sin modelo (`app/rag/citas.py`).
 - Interfaz en Streamlit (`app/web/`).

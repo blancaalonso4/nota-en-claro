@@ -20,7 +20,17 @@ st.title('Nota en Claro')
 st.caption('Dudas sobre la PAU de Madrid, con la fuente citada. Versión provisional.')
 pregunta = st.text_input('Tu pregunta')
 if pregunta:
-    with st.spinner('Buscando y respondiendo (en CPU puede tardar ~30 s)...'):
-        r = cargar_sistema().responder(pregunta)
-    st.write(formatear(r))
+    sistema = cargar_sistema()
+    hueco = st.empty()
+    r = None
+    with st.spinner('Buscando fragmentos (en CPU, la respuesta completa puede tardar más de un minuto)...'):
+        flujo = sistema.responder_stream(pregunta)
+        parcial = ''
+        for ev in flujo:
+            if 'trozo' in ev:
+                parcial += ev['trozo']
+                hueco.markdown(parcial)   # texto crudo del modelo mientras llega (RESPUESTA / FRAGMENTO / CITA)
+            else:
+                r = ev['resultado']
+    hueco.write(formatear(r))   # al terminar, se sustituye por la respuesta validada con su fuente
     st.caption(f"Tokens de entrada {r['tokens_entrada']} · salida {r['tokens_salida']} · {r['segundos_generar']} s")

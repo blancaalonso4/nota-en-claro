@@ -1,0 +1,72 @@
+{
+ "etiqueta": "antes",
+ "pregunta_al_principio": "si",
+ "modelo": "qwen3:4b-instruct",
+ "filas": [
+  {
+   "id": "P01",
+   "tokens_prompt": 1820,
+   "tokens_reutilizados": 1,
+   "tokens_evaluados": 1819,
+   "seg_eval_prompt": 57.1,
+   "tokens_salida": 120,
+   "seg_generacion": 76.85,
+   "seg_recuperar": 2.4,
+   "seg_total": 79.24,
+   "sha_salida": "27ae26e009"
+  },
+  {
+   "id": "P02",
+   "tokens_prompt": 1983,
+   "tokens_reutilizados": 434,
+   "tokens_evaluados": 1549,
+   "seg_eval_prompt": 53.79,
+   "tokens_salida": 87,
+   "seg_generacion": 68.38,
+   "seg_recuperar": 3.47,
+   "seg_total": 71.85,
+   "sha_salida": "f26e50ef78"
+  },
+  {
+   "id": "P03",
+   "tokens_prompt": 1888,
+   "tokens_reutilizados": 434,
+   "tokens_evaluados": 1454,
+   "seg_eval_prompt": 51.67,
+   "tokens_salida": 38,
+   "seg_generacion": 58.44,
+   "seg_recuperar": 5.04,
+   "seg_total": 63.48,
+   "sha_salida": "1d0b402d90"
+  },
+  {
+   "id": "P04",
+   "tokens_prompt": 1880,
+   "tokens_reutilizados": 434,
+   "tokens_evaluados": 1446,
+   "seg_eval_prompt": 48.46,
+   "tokens_salida": 146,
+   "seg_generacion": 72.8,
+   "seg_recuperar": 2.73,
+   "seg_total": 75.53,
+   "sha_salida": "f5f2f7a668"
+  },
+  {
+   "id": "P05",
+   "tokens_prompt": 1937,
+   "tokens_reutilizados": 434,
+   "tokens_evaluados": 1503,
+   "seg_eval_prompt": 50.74,
+   "tokens_salida": 138,
+   "seg_generacion": 73.26,
+   "seg_recuperar": 3.45,
+   "seg_total": 76.71,
+   "sha_salida": "58c98209a2"
+  }
+ ],
+ "suma_seg_total": 366.8,
+ "suma_seg_generacion": 349.7,
+ "suma_tokens_prompt": 9508,
+ "suma_tokens_reutilizados": 1737,
+ "suma_tokens_evaluados": 7771
+}

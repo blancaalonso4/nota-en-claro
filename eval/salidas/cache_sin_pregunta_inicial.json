@@ -1,0 +1,72 @@
+{
+ "etiqueta": "sin_pregunta_inicial",
+ "pregunta_al_principio": "no",
+ "modelo": "qwen3:4b-instruct",
+ "filas": [
+  {
+   "id": "P01",
+   "tokens_prompt": 1789,
+   "tokens_reutilizados": 1,
+   "tokens_evaluados": 1788,
+   "seg_eval_prompt": 61.6,
+   "tokens_salida": 99,
+   "seg_generacion": 78.69,
+   "seg_recuperar": 2.38,
+   "seg_total": 81.07,
+   "sha_salida": "c2b848f6d3"
+  },
+  {
+   "id": "P02",
+   "tokens_prompt": 1944,
+   "tokens_reutilizados": 435,
+   "tokens_evaluados": 1509,
+   "seg_eval_prompt": 55.12,
+   "tokens_salida": 92,
+   "seg_generacion": 74.83,
+   "seg_recuperar": 5.37,
+   "seg_total": 80.2,
+   "sha_salida": "8b70622f4e"
+  },
+  {
+   "id": "P03",
+   "tokens_prompt": 1854,
+   "tokens_reutilizados": 435,
+   "tokens_evaluados": 1419,
+   "seg_eval_prompt": 55.4,
+   "tokens_salida": 38,
+   "seg_generacion": 62.69,
+   "seg_recuperar": 4.67,
+   "seg_total": 67.36,
+   "sha_salida": "1d0b402d90"
+  },
+  {
+   "id": "P04",
+   "tokens_prompt": 1844,
+   "tokens_reutilizados": 436,
+   "tokens_evaluados": 1408,
+   "seg_eval_prompt": 52.44,
+   "tokens_salida": 80,
+   "seg_generacion": 65.96,
+   "seg_recuperar": 4.24,
+   "seg_total": 70.21,
+   "sha_salida": "e387ee5482"
+  },
+  {
+   "id": "P05",
+   "tokens_prompt": 1910,
+   "tokens_reutilizados": 436,
+   "tokens_evaluados": 1474,
+   "seg_eval_prompt": 51.59,
+   "tokens_salida": 143,
+   "seg_generacion": 75.65,
+   "seg_recuperar": 3.57,
+   "seg_total": 79.22,
+   "sha_salida": "9c79927816"
+  }
+ ],
+ "suma_seg_total": 378.1,
+ "suma_seg_generacion": 357.8,
+ "suma_tokens_prompt": 9341,
+ "suma_tokens_reutilizados": 1743,
+ "suma_tokens_evaluados": 7598
+}

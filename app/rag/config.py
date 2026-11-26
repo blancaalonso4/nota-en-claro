@@ -19,12 +19,12 @@ class ConfigRAG:
     dir_indice: Path = RAIZ / "data" / "indice"
     encoder: str = "intfloat/multilingual-e5-small"
     reordenador: str = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
-    usar_reordenador: bool = False
+    usar_reordenador: bool = True
     ventana_palabras: int = 250
     solape_palabras: int = 35
     k: int = 3
     n_candidatos: int = 20
-    modelo: str = "qwen3:8b"
+    modelo: str = "qwen3:4b-instruct"
     num_predict: int = 300
     num_ctx: int = 4096
     semilla: int = 42

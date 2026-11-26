@@ -6,7 +6,7 @@ Asistente para estudiantes de 2.º de Bachillerato en Madrid que preparan la PAU
 1. **Instalar Ollama** desde https://ollama.com/download y comprobar `ollama --version`.
 2. **Descargar los modelos:**
    ```powershell
-   ollama pull qwen3:8b
+   ollama pull qwen3:4b-instruct
    ollama pull qwen3:4b-instruct
    ```
 3. **Instalar Python 3.14** y comprobar `py -3.14 --version`.

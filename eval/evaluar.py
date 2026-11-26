@@ -281,19 +281,60 @@ def escribir_md() -> None:
                      f"{r['tokens_salida_medio']} | {r['seg_generar_medio']} | {r['seg_generar_max']} | "
                      f"{'enviado' if r['think_enviado'] else 'no admitido'} |")
         L.append('')
+    L += seccion_latencia()
     (Path(__file__).parent / 'resultados.md').write_text('\n'.join(L), encoding='utf-8')
     print('Escrito eval/resultados.md')
 
 
+def seccion_latencia() -> list[str]:
+    """Sección c) de resultados.md con los datos de eval/medir_partes.py y eval/medir_cache.py (si existen)."""
+    pp, ca, cb = (SALIDAS / n for n in ('partes_prompt.json', 'cache_antes.json', 'cache_sin_pregunta_inicial.json'))
+    if not (pp.exists() and ca.exists()):
+        return []
+    d = json.loads(pp.read_text(encoding='utf-8'))
+    f, m = d['fijo'], d['medias_25_preguntas']
+    total = f['sistema_completo'] + m['pregunta_inicial'] + m['fragmentos'] + m['pregunta_final']
+    L = ['## c) Latencia: tokens por parte del prompt y caché de prefijo (sesión 3)', '',
+         f"Modelo `{d['modelo']}`, recuperación con reordenador, k = 3. **Medido** con `eval/medir_partes.py`: cada trozo se manda "
+         "a Ollama en modo `raw` con `num_predict=1` y se lee `prompt_eval_count` (sin plantilla de chat; puede haber ±1-2 tokens por frontera).", '',
+         '| Parte del prompt | Tokens | ¿Cambia entre preguntas? |', '|---|---|---|',
+         f"| Instrucciones del sistema | {f['instrucciones']} | no |", f"| Ejemplos (2, dentro del mensaje de sistema) | {f['ejemplos']} | no |",
+         f"| Fragmentos (3, con sus cabeceras) | {m['fragmentos']} (media de 25) | sí |",
+         f"| Pregunta, copia inicial | {m['pregunta_inicial']} (media de 25) | sí |",
+         f"| Pregunta, copia final | {m['pregunta_final']} (media de 25) | sí |",
+         f"| **Suma de trozos** | {total:.0f} (la plantilla de chat añade unos 13: el total medido en la evaluación es 1913,8 de media) | |", '',
+         f"Parte fija: {f['sistema_completo']} tokens ({f['sistema_completo'] / total:.0%} del prompt); variable: {total - f['sistema_completo']:.0f}.", '',
+         '### Caché de prefijo con 5 preguntas seguidas en caliente (`eval/medir_cache.py`)', '',
+         "Protocolo: `ollama stop`, 3 llamadas de calentamiento, P01-P05 seguidas. «Reutilizados» sale de la línea `cached n_tokens` de "
+         "`server.log` de Ollama; «evaluados» = total del prompt - reutilizados. `prompt_eval_count` de la API incluye los reutilizados.", '']
+    for etiqueta, ruta, nombre in (('antes', ca, 'Prompt actual (la parte fija ya va primero: mensaje de sistema)'),
+                                   ('sin_pregunta_inicial', cb, 'Variante: se quita la copia inicial de la pregunta (cambia el contenido, no solo el orden; NO adoptada)')):
+        if not ruta.exists():
+            continue
+        r = json.loads(ruta.read_text(encoding='utf-8'))
+        L += [f"**{nombre}**", '', '| Pregunta | Tokens prompt | Reutilizados | Evaluados | s evaluar prompt | s generar | s total (recuperar+generar) |',
+              '|---|---|---|---|---|---|---|']
+        for x in r['filas']:
+            L.append(f"| {x['id']} | {x['tokens_prompt']} | {x['tokens_reutilizados']} | {x['tokens_evaluados']} | "
+                     f"{x['seg_eval_prompt']} | {x['seg_generacion']} | {x['seg_total']} |")
+        ev = sum(x['seg_eval_prompt'] for x in r['filas'])
+        L += [f"| **Suma** | {r['suma_tokens_prompt']} | {r['suma_tokens_reutilizados']} | {r['suma_tokens_evaluados']} | "
+              f"{ev:.1f} | {r['suma_seg_generacion']} | {r['suma_seg_total']} |", '',
+              f"Evaluar el prompt supone el {ev / r['suma_seg_generacion']:.0%} de los segundos de generación.", '']
+    return L
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument('--parte', choices=['a', 'b'], required=True)
+    ap.add_argument('--parte', choices=['a', 'b', 'md'], required=True)
     ap.add_argument('--modelos', nargs='+', default=['qwen3:8b', 'qwen3:4b-instruct'])
     a = ap.parse_args()
     cfg = ConfigRAG()
     SALIDAS.mkdir(exist_ok=True)
     if a.parte == 'a':
         parte_a(cfg)
+    elif a.parte == 'md':
+        pass   # solo regenera resultados.md con los datos ya medidos
     else:
         parte_b(cfg, a.modelos)
     escribir_md()

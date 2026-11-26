@@ -59,3 +59,39 @@ Todas **medidas** en este portátil (CPU, sin GPU):
 - **Resultados de generación (medidos, ver `eval/resultados.md`):** `qwen3:8b` 13/25 correctas, abstiene 2/5 sin respuesta, 0/20 abstención indebida; `qwen3:4b-instruct` 16/25, abstiene 5/5, 3/20 indebida. Respondibles correctas, 11/20 en ambos.
 - **Salvedades:** los segundos por pregunta de esta tanda (118,8 s con 8b; 85,7 s con 4b) son mucho mayores que los 27–41 s medidos antes en caliente; no se ha investigado la causa (la tanda se ejecutó con el modelo de reordenador cargado en el mismo proceso y otras tareas en la máquina). La reproducibilidad de 4b bajo el protocolo no está comprobada.
 - **Alternativa descartada:** medir la generación sin reordenador (la ganadora de la parte a es la que pidió el enunciado).
+
+## 2026-11-26 · Sesión 3 · Reordenador activado por defecto
+- **Decisión:** `ConfigRAG.usar_reordenador=True`. Sustituye a la decisión «Reordenador opcional y desactivado por defecto».
+- **Cifras (medidas en `eval/evaluar.py --parte a`, 20 respondibles):** acierto@3 19/20 con reordenador frente a 16/20 sin él (acierto@1 15/20 frente a 12/20). Coste medido: +2,75 s por pregunta (2,7451 s frente a 0,0277 s de media).
+- **Por qué:** 3 preguntas más con la evidencia dentro de los 3 fragmentos que ve el generador, a cambio de unos segundos frente a una generación de decenas de segundos.
+- **Descartada:** dejarlo desactivado.
+
+## 2026-11-26 · Sesión 3 · Generador único: `qwen3:4b-instruct` (se retira `qwen3:8b` del producto)
+- **Decisión:** `ConfigRAG.modelo='qwen3:4b-instruct'`. El futuro coordinador usará también `qwen3:4b-instruct`. Sustituye a «Generar con Ollama (`qwen3:8b`…)» y a la parte de la arquitectura de CLAUDE.md que daba `qwen3:8b` al agente de normativa.
+- **Cifras (medidas, `eval/resultados.md` parte b, recuperación con reordenador y k=3, 25 preguntas):**
+
+| | `qwen3:8b` | `qwen3:4b-instruct` |
+|---|---|---|
+| correctas | 13/25 | 16/25 |
+| abstención en las 5 sin respuesta | 2/5 | 5/5 |
+| s/pregunta (media) | 118,8 | 85,7 |
+
+- **Por qué:** más correctas, abstiene bien en las preguntas sin respuesta y es más rápido; un solo modelo cargado cabe mejor en 16 GB.
+- **Salvedad:** `qwen3:4b-instruct` tiene 3/20 abstenciones indebidas (`qwen3:8b`, 0/20) y las respondibles correctas son 11/20 en ambos.
+- **Descartada:** mantener `qwen3:8b` como generador de normativa.
+
+## 2026-11-26 · Sesión 3 · Latencia: el orden del prompt no se cambia (la parte fija ya iba primero)
+Todo **medido** en este portátil con `qwen3:4b-instruct` (scripts `eval/medir_partes.py` y `eval/medir_cache.py`; tablas en `eval/resultados.md`, sección c).
+- **Tokens por parte (media de 25 preguntas, `prompt_eval_count` en modo raw):** instrucciones 202 · ejemplos 219 · fragmentos 1412,4 · pregunta inicial 33,3 · pregunta final 34,3 (más ~13 de plantilla de chat; total medido 1913,8). Parte fija 421 tokens = 22 %.
+- **El prefijo fijo ya se reutilizaba.** Las instrucciones y los ejemplos están en el mensaje de sistema, que es lo primero del prompt y es idéntico byte a byte entre preguntas. Con 5 preguntas seguidas en caliente (P01-P05, tras `ollama stop` y calentamiento), según `cached n_tokens` de `server.log` de Ollama: reutilizados 434 tokens en P02-P05 (en P01 solo 1, porque el calentamiento usa otro prompt), evaluados 7771 de 9508; 366,8 s en total (73,4 s por pregunta).
+- **Por qué no hay nada que reordenar:** lo que queda por evaluar son los fragmentos (~1412 tokens) y la pregunta, que cambian en cada pregunta y por tanto no se pueden cachear. Evaluar el prompt cuesta ~28 ms/token y supone el 75 % de los segundos de generación (261,8 de 349,7 s).
+- **Prueba descartada:** quitar la copia inicial de la pregunta (`pregunta_al_principio=False`). No es solo un cambio de orden (quita 33 tokens de contenido repetido) y no mejora: 378,1 s frente a 366,8 s, reutilizados 1743 frente a 1737, y la salida cambió en 4 de 5 preguntas. No se adopta.
+- **Parte c) (reevaluar las 25 preguntas) no se lanza:** el prompt no ha cambiado, así que la tanda de 16/25 de `eval/resultados.md` (parte b, `qwen3:4b-instruct`, reordenador, k=3) sigue siendo la referencia; coincide con la configuración por defecto actual.
+- **Para bajar la latencia de verdad** habría que reducir los tokens variables (menos fragmentos o más cortos, cambia el contenido y exige reevaluar) o acelerar la evaluación del prompt (hilos, lote); no se ha probado y queda para otra sesión.
+
+## 2026-11-26 · Sesión 3 · Streaming de la respuesta en Streamlit
+- `GeneradorOllama.generar_stream` y `SistemaRAG.responder_stream` ceden el texto a medida que sale; `app/web/app.py` lo pinta en un hueco y, al terminar, lo sustituye por la respuesta validada con su fuente (la cita solo se puede verificar con el texto completo).
+- **Medido (`eval/prueba_streaming.py`, P03, qwen3:4b-instruct):** con streaming y prompt sin caché, el primer trozo llega a los 63,9 s y la respuesta completa a los 70,0 s (37 trozos); sin streaming, 90,5 s en esa tanda. Con el prompt ya en caché, 10,6 s frente a 10,0 s. **La salida es idéntica con y sin streaming** (1.ª y 2.ª ejecución), con las mismas opciones (seed 42, temperature 0, num_predict, think).
+- **Alcance real:** el streaming mejora la sensación de espera solo en la fase de generación; la espera al primer trozo está dominada por evaluar el prompt (~64 s de 70 s), que el streaming no reduce. La diferencia 90,5 s frente a 70,0 s entre las dos tandas no se atribuye al streaming (una sola medición por modo; causa no investigada, y los tiempos ya variaban entre tandas, ver las salvedades de la evaluación).
+- Comprobado en la app con `streamlit.testing.v1.AppTest`: respuesta con fuente, sin excepciones.
+

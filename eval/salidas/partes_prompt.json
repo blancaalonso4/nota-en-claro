@@ -1,0 +1,165 @@
+{
+ "modelo": "qwen3:4b-instruct",
+ "fijo": {
+  "instrucciones": 202,
+  "ejemplos": 219,
+  "sistema_completo": 421
+ },
+ "medias_25_preguntas": {
+  "pregunta_inicial": 33.3,
+  "fragmentos": 1412.4,
+  "pregunta_final": 34.3
+ },
+ "filas": [
+  {
+   "id": "P01",
+   "pregunta_inicial": 31,
+   "fragmentos": 1323,
+   "pregunta_final": 32
+  },
+  {
+   "id": "P02",
+   "pregunta_inicial": 39,
+   "fragmentos": 1470,
+   "pregunta_final": 40
+  },
+  {
+   "id": "P03",
+   "pregunta_inicial": 34,
+   "fragmentos": 1385,
+   "pregunta_final": 35
+  },
+  {
+   "id": "P04",
+   "pregunta_inicial": 36,
+   "fragmentos": 1373,
+   "pregunta_final": 37
+  },
+  {
+   "id": "P05",
+   "pregunta_inicial": 27,
+   "fragmentos": 1448,
+   "pregunta_final": 28
+  },
+  {
+   "id": "P06",
+   "pregunta_inicial": 28,
+   "fragmentos": 1394,
+   "pregunta_final": 29
+  },
+  {
+   "id": "P07",
+   "pregunta_inicial": 32,
+   "fragmentos": 1372,
+   "pregunta_final": 33
+  },
+  {
+   "id": "P08",
+   "pregunta_inicial": 25,
+   "fragmentos": 1435,
+   "pregunta_final": 26
+  },
+  {
+   "id": "P09",
+   "pregunta_inicial": 31,
+   "fragmentos": 1453,
+   "pregunta_final": 32
+  },
+  {
+   "id": "P10",
+   "pregunta_inicial": 22,
+   "fragmentos": 1410,
+   "pregunta_final": 23
+  },
+  {
+   "id": "P11",
+   "pregunta_inicial": 24,
+   "fragmentos": 1350,
+   "pregunta_final": 25
+  },
+  {
+   "id": "P12",
+   "pregunta_inicial": 42,
+   "fragmentos": 1458,
+   "pregunta_final": 43
+  },
+  {
+   "id": "P13",
+   "pregunta_inicial": 23,
+   "fragmentos": 1304,
+   "pregunta_final": 24
+  },
+  {
+   "id": "P14",
+   "pregunta_inicial": 27,
+   "fragmentos": 1388,
+   "pregunta_final": 28
+  },
+  {
+   "id": "P15",
+   "pregunta_inicial": 31,
+   "fragmentos": 1541,
+   "pregunta_final": 32
+  },
+  {
+   "id": "P16",
+   "pregunta_inicial": 38,
+   "fragmentos": 1388,
+   "pregunta_final": 39
+  },
+  {
+   "id": "P17",
+   "pregunta_inicial": 36,
+   "fragmentos": 1388,
+   "pregunta_final": 37
+  },
+  {
+   "id": "P18",
+   "pregunta_inicial": 44,
+   "fragmentos": 1285,
+   "pregunta_final": 45
+  },
+  {
+   "id": "P19",
+   "pregunta_inicial": 59,
+   "fragmentos": 1553,
+   "pregunta_final": 60
+  },
+  {
+   "id": "P20",
+   "pregunta_inicial": 55,
+   "fragmentos": 1429,
+   "pregunta_final": 56
+  },
+  {
+   "id": "P21",
+   "pregunta_inicial": 37,
+   "fragmentos": 1512,
+   "pregunta_final": 38
+  },
+  {
+   "id": "P22",
+   "pregunta_inicial": 26,
+   "fragmentos": 1488,
+   "pregunta_final": 27
+  },
+  {
+   "id": "P23",
+   "pregunta_inicial": 24,
+   "fragmentos": 1400,
+   "pregunta_final": 25
+  },
+  {
+   "id": "P24",
+   "pregunta_inicial": 25,
+   "fragmentos": 1319,
+   "pregunta_final": 26
+  },
+  {
+   "id": "P25",
+   "pregunta_inicial": 36,
+   "fragmentos": 1443,
+   "pregunta_final": 37
+  }
+ ]
+}

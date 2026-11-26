@@ -33,7 +33,20 @@ class SistemaRAG:
     def responder(self, pregunta: str) -> dict:
         recuperados = self.recuperar(pregunta)
         msgs = mensajes_para(pregunta, recuperados, self.manifiesto)
-        g = self.generador.generar(msgs)
+        return self._cerrar(pregunta, recuperados, self.generador.generar(msgs))
+
+    def responder_stream(self, pregunta: str):
+        """Igual que `responder`, pero cede {'trozo': str} con el texto crudo del modelo a medida que sale y, al terminar,
+        {'resultado': dict} con lo mismo que devuelve `responder` (la cita se valida con el texto completo)."""
+        recuperados = self.recuperar(pregunta)
+        msgs = mensajes_para(pregunta, recuperados, self.manifiesto)
+        for ev in self.generador.generar_stream(msgs):
+            if 'trozo' in ev:
+                yield ev
+            else:
+                yield {'resultado': self._cerrar(pregunta, recuperados, ev['final'])}
+
+    def _cerrar(self, pregunta: str, recuperados: list[dict], g: dict) -> dict:
         v = validar(pregunta, g['texto'], recuperados)
         fuente = {}
         if not v['abstiene']:

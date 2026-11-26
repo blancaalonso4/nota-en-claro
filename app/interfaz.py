@@ -1,8 +1,8 @@
-"""Interfaz mínima en Streamlit (provisional): una caja de pregunta sobre el RAG."""
+"""Interfaz Streamlit (provisional): una caja de pregunta sobre el RAG. No se lanza a mano: la arranca `python -m app.app`."""
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import streamlit as st  # noqa: E402
 

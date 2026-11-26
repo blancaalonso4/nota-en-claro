@@ -95,3 +95,9 @@ Todo **medido** en este portátil con `qwen3:4b-instruct` (scripts `eval/medir_p
 - **Alcance real:** el streaming mejora la sensación de espera solo en la fase de generación; la espera al primer trozo está dominada por evaluar el prompt (~64 s de 70 s), que el streaming no reduce. La diferencia 90,5 s frente a 70,0 s entre las dos tandas no se atribuye al streaming (una sola medición por modo; causa no investigada, y los tiempos ya variaban entre tandas, ver las salvedades de la evaluación).
 - Comprobado en la app con `streamlit.testing.v1.AppTest`: respuesta con fuente, sin excepciones.
 
+## 2026-11-26 · Sesión 3 · Un solo punto de arranque: `python -m app.app`
+- `app/web/app.py` pasa a `app/interfaz.py` (se elimina `app/web/`) y nuevo `app/app.py`: comprueba Ollama y que `qwen3:4b-instruct` está descargado (mensaje con lo que hay que hacer si no), construye o carga el índice y lanza Streamlit con el mismo intérprete.
+- **Por qué `python -m app.app` y no `python app/app.py`:** al ejecutar el archivo directamente, Python pone `app/` al principio del `sys.path` y `app.py` taparía al paquete `app` (fallarían los `from app.rag...`).
+- README: apartado «¿Por qué no hay entrenamiento (train.py)?» (falta información, no estilo → RAG; la ingesta se hace al arrancar) y arranque simplificado; se corrige un `ollama pull` duplicado del README.
+- **Descartada:** mantener `streamlit run app/web/app.py` como arranque (no comprueba nada y exige dos pasos).
+

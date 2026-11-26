@@ -17,9 +17,9 @@ Web app para estudiantes de 2.º de Bachillerato en Madrid que preparan la PAU. 
   - agente de normativa (RAG, `qwen3:4b-instruct` sin razonamiento; `qwen3:8b` retirado el 2026-11-26, ver `docs/decisiones.md`),
   - agente de acciones (MCP a Google Drive, Calendar y Gmail),
   - verificador de citas en Python sin modelo (`app/rag/citas.py`).
-- Interfaz en Streamlit (`app/web/`).
+- Interfaz en Streamlit (`app/interfaz.py`), que lanza el punto de arranque `python -m app.app`.
 - Límite de tokens en cada llamada (`num_predict`); razonamiento desactivado salvo donde haga falta.
 
 ## Estructura
-`app/rag/` RAG · `app/agentes/` · `app/mcp_servers/` · `app/web/` · `data/` textos, manifiesto y preguntas (los PDF no se copian) · `eval/` · `docs/`.
+`app/rag/` RAG · `app/agentes/` · `app/mcp_servers/` · `app/app.py` arranque · `app/interfaz.py` · `data/` textos, manifiesto y preguntas (los PDF no se copian) · `eval/` · `docs/`.
 `caso3_referencia/` es solo consulta y no se sube a git.

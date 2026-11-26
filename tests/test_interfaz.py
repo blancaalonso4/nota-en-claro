@@ -9,6 +9,7 @@ from streamlit.testing.v1 import AppTest
 
 from app import servicios
 from app.agentes import coordinador as co
+from app.tabla_notas import tabla_a_notas, tabla_vacia
 from app.agentes.puente_mcp import ResultadoLlamada
 from app.rag.config import ConfigRAG
 
@@ -85,7 +86,7 @@ def test_normativa_con_fuente_y_traza(app):
     assert any('Tipo de petición: normativa' in c.value for c in at.caption)
     # panel de traza: coordinador + normativa, con tokens
     assert any('2 pasos' in c.value for c in at.caption if 'pasos' in c.value)
-    filas = at.dataframe[0].value
+    filas = at.dataframe[-1].value
     assert list(filas['agente']) == ['coordinador', 'normativa'] and list(filas['tokens_entrada']) == [140, 1800]
 
 
@@ -105,7 +106,7 @@ def test_correo_muestra_el_borrador_y_enviar_exige_pulsar_el_boton(app):
     boton.click().run()
     assert app.puente.enviados == [('R1', ORI)]
     assert any('Correo enviado' in t for t in textos(at)) and not any('Borrador pendiente' in s.value for s in at.subheader)
-    assert any(p == 'confirmar' for p in at.dataframe[0].value['permiso'])    # el envío queda en la traza con su permiso
+    assert any(p == 'confirmar' for p in at.dataframe[-1].value['permiso'])    # el envío queda en la traza con su permiso
 
 
 def test_descartar_no_envia(app):
@@ -115,20 +116,48 @@ def test_descartar_no_envia(app):
     assert app.puente.enviados == [] and any('No lo he enviado' in t for t in textos(at))
 
 
-def test_nota_con_notas_a_mano_sin_google(app, monkeypatch):
+def sin_google(monkeypatch):
     monkeypatch.setattr(servicios, 'estado_google', lambda: {'credenciales': False, 'tokens': {'drive': False, 'calendar': False, 'gmail': False},
                                                               'orientador': None, 'lista': False, 'hoja_notas_id': None})
+
+
+def test_formulario_de_notas_esta_en_el_area_principal_y_con_cabeceras(app, monkeypatch):
+    sin_google(monkeypatch)
     at = app('nota_admision')
     assert any('La parte de Google no está lista' in w.value for w in at.sidebar.warning)
-    at.number_input[0].set_value(8.5)
-    filas = [('Acceso 1', 8.0, 'acceso', ''), ('Acceso 2', 8.0, 'acceso', ''), ('Acceso 3', 7.74, 'acceso', ''),
+    # el formulario ya no vive en la barra lateral: no hay editor ni número de media ahí
+    assert not at.sidebar.number_input and not [e for e in at.sidebar if e.type == 'dataframe']
+    assert [e.label for e in at.main.number_input] == ['Nota media de Bachillerato (0-10, sin Religión)']
+    assert any(e.label == 'Introducir mis notas a mano' for e in at.expander)
+    # el editor está dentro del formulario del área principal y es la primera tabla de la página (la de la traza va después)
+    cabeceras = json.loads(at.dataframe[0].proto.columns)
+    assert all(c in cabeceras for c in ('Asignatura', 'Nota', 'Fase', 'Ponderación', 'Segunda lengua'))
+    assert at.dataframe[0].proto.editing_mode == 2   # DYNAMIC: se pueden añadir filas
+
+
+def test_tabla_a_notas_ignora_filas_vacias_y_traduce_las_columnas():
+    tabla = tabla_vacia()
+    tabla.loc[0, ['Asignatura', 'Nota', 'Fase', 'Ponderación']] = ['Matemáticas II', 8.5, 'acceso', '0,2']
+    tabla.loc[1, ['Asignatura', 'Nota', 'Fase']] = ['Inglés', 7.0, 'admisión']
+    tabla.loc[1, 'Segunda lengua'] = True
+    tabla.loc[2, 'Nota'] = 9.0                       # sin asignatura: se ignora
+    d = tabla_a_notas(tabla, 8.5)
+    assert d == {'nota_media_bachillerato': 8.5, 'materias': [
+        {'asignatura': 'Matemáticas II', 'nota': 8.5, 'fase': 'acceso', 'ponderacion': '0,2', 'segunda_lengua': ''},
+        {'asignatura': 'Inglés', 'nota': 7.0, 'fase': 'admisión', 'ponderacion': '', 'segunda_lengua': 'sí'}]}
+
+
+def test_nota_con_notas_a_mano_sin_google(app, monkeypatch):
+    sin_google(monkeypatch)
+    at = app('nota_admision')
+    at.number_input(key='media_notas').set_value(8.5)
+    filas = [('Acceso 1', 8.0, 'acceso', None), ('Acceso 2', 8.0, 'acceso', None), ('Acceso 3', 7.74, 'acceso', None),
              ('Matemáticas II', 8.5, 'acceso', '0,2'), ('Física', 7.5, 'admisión', '0,2')]
-    for i, (n, nota, fase, pond) in enumerate(filas):
-        at.text_input(key=f'n_as_{i}').set_value(n)
-        at.number_input(key=f'n_no_{i}').set_value(nota)
-        at.selectbox(key=f'n_fa_{i}').set_value(fase)
-        at.selectbox(key=f'n_po_{i}').set_value(pond)
+    at.session_state['editor_notas'] = {'edited_rows': {i: {'Asignatura': n, 'Nota': nota, 'Fase': fase, 'Ponderación': pond}
+                                                         for i, (n, nota, fase, pond) in enumerate(filas)},
+                                        'added_rows': [], 'deleted_rows': []}
     next(b for b in at.button if b.label == 'Usar estas notas').click().run()
+    assert not at.exception
     assert at.session_state.notas_manuales is not None
     at.chat_input[0].set_value('calcula mi nota de admisión').run()
     assert not at.exception

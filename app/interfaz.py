@@ -15,10 +15,8 @@ import streamlit as st  # noqa: E402
 
 from app import servicios  # noqa: E402
 from app.agentes.traza import Traza  # noqa: E402
+from app.tabla_notas import FASES, PONDERACIONES, tabla_a_notas, tabla_vacia  # noqa: E402
 
-FILAS_NOTAS = 10
-FASES = ['', 'acceso', 'admisión']
-PONDERACIONES = ['', '0', '0,1', '0,2']
 
 
 @st.cache_resource
@@ -36,23 +34,37 @@ def iniciar_sesion():
 
 
 def formulario_notas():
-    """Entrada manual de notas: alternativa a leerlas de Drive. Devuelve el diccionario o None si no se envió."""
+    """Entrada manual de notas en el área principal: alternativa a leerlas de Drive. Devuelve el diccionario o None si no se envió."""
     with st.form('form_notas'):
-        media = st.number_input('Nota media de Bachillerato (0-10, sin Religión)', 0.0, 10.0, value=None, step=0.01, format='%.2f')
-        st.caption('Una fila por asignatura. De la fase de acceso solo pondera la materia obligatoria de modalidad.')
-        filas = []
-        for i in range(FILAS_NOTAS):
-            c = st.columns([3, 2, 2, 2, 1])
-            nombre = c[0].text_input('Asignatura', key=f'n_as_{i}', label_visibility='collapsed', placeholder='Asignatura')
-            nota = c[1].number_input('Nota', 0.0, 10.0, value=None, step=0.01, format='%.2f', key=f'n_no_{i}', label_visibility='collapsed', placeholder='Nota')
-            fase = c[2].selectbox('Fase', FASES, key=f'n_fa_{i}', label_visibility='collapsed')
-            pond = c[3].selectbox('Ponderación', PONDERACIONES, key=f'n_po_{i}', label_visibility='collapsed')
-            sl = c[4].checkbox('2.ª leng.', key=f'n_sl_{i}', help='Segunda lengua extranjera')
-            filas.append({'asignatura': nombre, 'nota': nota, 'fase': fase, 'ponderacion': pond, 'segunda_lengua': 'sí' if sl else ''})
+        st.caption('Una fila por asignatura (con el botón + o la última fila puedes añadir más). '
+                   'La ponderación (0, 0,1 o 0,2) solo cuenta en la fase de admisión y en la materia obligatoria de modalidad de la fase de acceso.')
+        media = st.number_input('Nota media de Bachillerato (0-10, sin Religión)', 0.0, 10.0, value=None, step=0.01, format='%.2f',
+                                key='media_notas')
+        tabla = st.data_editor(
+            tabla_vacia(), key='editor_notas', num_rows='dynamic', hide_index=True, width='stretch',
+            column_config={
+                'Asignatura': st.column_config.TextColumn('Asignatura', help='Por ejemplo: Matemáticas II', width='large'),
+                'Nota': st.column_config.NumberColumn('Nota', min_value=0.0, max_value=10.0, step=0.01, format='%.2f'),
+                'Fase': st.column_config.SelectboxColumn('Fase', options=FASES),
+                'Ponderación': st.column_config.SelectboxColumn('Ponderación', options=PONDERACIONES),
+                'Segunda lengua': st.column_config.CheckboxColumn('Segunda lengua', help='Marca la segunda lengua extranjera'),
+            })
         enviado = st.form_submit_button('Usar estas notas')
     if enviado:
-        return {'nota_media_bachillerato': media, 'materias': [f for f in filas if f['asignatura'].strip()]}
+        return tabla_a_notas(tabla, media)
     return None
+
+
+def zona_notas_manuales():
+    ss = st.session_state
+    with st.expander('Introducir mis notas a mano', expanded=ss.notas_manuales is None):
+        datos = formulario_notas()
+        if datos is not None:
+            ss.notas_manuales = datos
+            st.success('Notas guardadas para esta sesión. Pídeme que calcule tu nota de admisión.')
+        if ss.notas_manuales is not None and st.button('Olvidar mis notas'):
+            ss.notas_manuales = None
+            st.rerun()
 
 
 def barra_lateral(recursos):
@@ -80,14 +92,7 @@ def barra_lateral(recursos):
                 st.success(('Hoja creada: ' if r.datos.get('creada') else 'Ya tenías tu hoja: ') + r.datos['url'])
             else:
                 st.error(r.mensaje)
-        with st.expander('Introducir mis notas a mano'):
-            datos = formulario_notas()
-            if datos is not None:
-                ss.notas_manuales = datos
-                st.success('Notas guardadas para esta sesión. Pídeme que calcule tu nota de admisión.')
-            if ss.notas_manuales is not None and st.button('Olvidar mis notas'):
-                ss.notas_manuales = None
-                st.rerun()
+        st.caption('Sin Google, rellena la tabla «Introducir mis notas a mano» de la página principal.')
 
 
 def tarjeta_borrador(recursos):
@@ -127,7 +132,7 @@ def panel_traza():
         st.caption(f"{tot['pasos']} pasos · {tot['llamadas_modelo']} llamadas al modelo · {tot['tokens_entrada']} tokens de entrada · "
                    f"{tot['tokens_salida']} de salida · {tot['segundos']} s · {tot['fallos']} fallos · registro: `logs/{t.archivo.name}`")
         cols = ['paso', 'agente', 'tipo', 'herramienta', 'permiso', 'tokens_entrada', 'tokens_salida', 'segundos', 'fallo', 'reintento', 'error']
-        st.dataframe([{c: p.get(c) for c in cols} for p in t.pasos], use_container_width=True, hide_index=True)
+        st.dataframe([{c: p.get(c) for c in cols} for p in t.pasos], width='stretch', hide_index=True)
 
 
 def atender(recursos, peticion: str):
@@ -158,6 +163,7 @@ def main():
     st.title('Nota en Claro')
     st.caption('Dudas sobre la PAU de Madrid con la fuente citada, cálculo de tu nota de admisión, plan de estudio, informes y correo a tu orientador.')
     barra_lateral(recursos)
+    zona_notas_manuales()
     for rol, texto in st.session_state.mensajes:
         with st.chat_message(rol):
             st.markdown(texto)

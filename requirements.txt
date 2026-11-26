@@ -1,0 +1,8 @@
+# Versiones con las que se ha probado (py -3.14, Windows). Medido: instalan sin errores.
+numpy==2.5.5
+torch==2.15.0
+transformers==5.24.1
+sentence-transformers==5.7.0
+ollama==0.6.3
+streamlit==1.67.0
+pypdf==7.1.1

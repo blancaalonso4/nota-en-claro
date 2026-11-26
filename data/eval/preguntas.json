@@ -1,0 +1,502 @@
+{
+  "semilla": 42,
+  "nota": "tipo: normal | dificil | sin_respuesta. Anclas copiadas de rag/texto/docNN.txt. «alternativas» = el mismo dato está en varios documentos y vale cualquiera. dato_clave: lista de datos que deben salir todos; cada uno admite variantes separadas por «|».",
+  "preguntas": [
+    {
+      "id": "P01",
+      "tipo": "normal",
+      "pregunta": "Si no estoy de acuerdo con mi nota, ¿cuánto tiempo tengo para pedir que me revisen el examen?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc13",
+              "texto": "Dentro del plazo de los tres días hábiles siguientes a la fecha de publicación de las calificaciones"
+            },
+            {
+              "doc": "doc07",
+              "texto": "El plazo de presentación de las solicitudes de revisión será de tres días hábiles"
+            },
+            {
+              "doc": "doc08",
+              "texto": "Días 12, 15 y 16 de junio de 2026"
+            },
+            {
+              "doc": "doc17",
+              "texto": "se realizarán los días 12, 15 y 16 de junio"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "tres días hábiles|3 días hábiles|tres días|12, 15 y 16"
+      ]
+    },
+    {
+      "id": "P02",
+      "tipo": "normal",
+      "pregunta": "¿Cuánto cuesta matricularse en la PAU en Madrid si solo hago la parte obligatoria, sin asignaturas de la fase de admisión?",
+      "anclas": [
+        {
+          "doc": "doc17",
+          "texto": "Por inscripción en la prueba: 93,02 euros, más 11,63 euros por cada materia de la"
+        }
+      ],
+      "dato_clave": [
+        "93,02"
+      ]
+    },
+    {
+      "id": "P03",
+      "tipo": "normal",
+      "pregunta": "En el examen de Matemáticas II, ¿cuántas faltas de ortografía me perdonan sin quitarme nota?",
+      "anclas": [
+        {
+          "doc": "doc01",
+          "texto": "Los dos primeros errores ortográficos no se penalizarán"
+        }
+      ],
+      "dato_clave": [
+        "dos primeros|dos primeras|2 primeros|dos faltas|dos errores|2 faltas|2 errores"
+      ]
+    },
+    {
+      "id": "P04",
+      "tipo": "normal",
+      "pregunta": "Si llego tarde a un examen por una causa justificada, ¿cuántos minutos de retraso me dejan para poder entrar?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc09",
+              "texto": "sólo se permitirá un retraso de un máximo de 20 minutos en la entrada al aula"
+            },
+            {
+              "doc": "doc08",
+              "texto": "entrada al aula de un tiempo máximo de 20 minutos y siempre por causa debidamente"
+            },
+            {
+              "doc": "doc15",
+              "texto": "se permitirá un retraso en la entrada al aula de 20 minutos"
+            },
+            {
+              "doc": "doc09",
+              "texto": "Se permite un máximo de 20 minutos de demora tras el inicio"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "20 minutos"
+      ]
+    },
+    {
+      "id": "P05",
+      "tipo": "normal",
+      "pregunta": "¿Puedo llevar al examen de Matemáticas una calculadora que haga gráficas?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc02",
+              "texto": "Las calculadoras no deben tener NINGUNA de las siguientes características: posibilidad de transmitir datos, ser programables, pantalla gráfica"
+            },
+            {
+              "doc": "doc09",
+              "texto": "Las calculadoras no deben tener NINGUNA de las siguientes características: posibilidad de transmitir datos, ser programables, pantalla gráfica"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "gráfica"
+      ]
+    },
+    {
+      "id": "P06",
+      "tipo": "normal",
+      "pregunta": "En la preinscripción de la universidad, ¿cuántas carreras puedo pedir como máximo?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc16",
+              "texto": "Pueden solicitarse hasta un máximo de 12 titulaciones"
+            },
+            {
+              "doc": "doc15",
+              "texto": "Se podrán solicitar hasta un máximo de 12 titulaciones"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "12|doce"
+      ]
+    },
+    {
+      "id": "P07",
+      "tipo": "normal",
+      "pregunta": "Vengo de un ciclo superior de FP y no he hecho la PAU, ¿con qué nota entro en la universidad?",
+      "anclas": [
+        {
+          "doc": "doc14",
+          "texto": "Para este alumnado la nota de admisión es la nota media final del ciclo formativo de grado"
+        }
+      ],
+      "dato_clave": [
+        "media final del ciclo|nota media del ciclo|media del ciclo"
+      ]
+    },
+    {
+      "id": "P08",
+      "tipo": "normal",
+      "pregunta": "¿Cuántos exámenes como máximo puede corregir cada profesor del tribunal?",
+      "anclas": [
+        {
+          "doc": "doc18",
+          "texto": "El número máximo de cuadernillos a corregir por profesor/a será de 200"
+        }
+      ],
+      "dato_clave": [
+        "200"
+      ]
+    },
+    {
+      "id": "P09",
+      "tipo": "normal",
+      "pregunta": "¿Hasta qué fecha se podían pedir las adaptaciones para hacer la PAU 2026 en Madrid?",
+      "anclas": [
+        {
+          "doc": "doc19",
+          "texto": "La solicitud deberá presentarse del 1 de diciembre de 2025 al 20 de enero de 2026"
+        }
+      ],
+      "dato_clave": [
+        "20 de enero"
+      ]
+    },
+    {
+      "id": "P10",
+      "tipo": "normal",
+      "pregunta": "¿Me vale el DNI del móvil para identificarme en el examen?",
+      "anclas": [
+        {
+          "doc": "doc05",
+          "texto": "únicamente será válida la presentación del documento en soporte físico"
+        }
+      ],
+      "dato_clave": [
+        "físico|física"
+      ]
+    },
+    {
+      "id": "P11",
+      "tipo": "normal",
+      "pregunta": "¿Cuántas asignaturas me pueden ponderar como máximo para la nota de admisión?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc06",
+              "texto": "La Nota de Admisión podrá incrementarse con la ponderación de un máximo de dos materias"
+            },
+            {
+              "doc": "doc16",
+              "texto": "se tendrán en cuenta un máximo de dos materias"
+            },
+            {
+              "doc": "doc08",
+              "texto": "se tendrán en cuenta las dos que más puntos"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "dos materias|2 materias|dos asignaturas|2 asignaturas|las dos|dos que más"
+      ]
+    },
+    {
+      "id": "P12",
+      "tipo": "normal",
+      "pregunta": "Soy deportista de alto nivel y no puedo ir a la ordinaria por una competición. ¿Tengo que volver a matricularme para la extraordinaria y cuándo?",
+      "anclas": [
+        {
+          "doc": "doc12",
+          "texto": "Es obligatorio formalizar de nuevo la matrícula del 18 al 24"
+        }
+      ],
+      "dato_clave": [
+        "18 al 24"
+      ]
+    },
+    {
+      "id": "P13",
+      "tipo": "normal",
+      "pregunta": "¿Qué sanción hay si cometo una falta muy grave durante la PAU?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc10",
+              "texto": "En los casos de falta muy grave, la medida consistirá en la anulación de toda la prueba"
+            },
+            {
+              "doc": "doc05",
+              "texto": "la infracción será considerada muy grave, lo que podrá conllevar la anulación completa de la prueba"
+            },
+            {
+              "doc": "doc11",
+              "texto": "la infracción será considerada muy grave, lo que podrá conllevar la anulación completa de la prueba"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "anulación"
+      ]
+    },
+    {
+      "id": "P14",
+      "tipo": "normal",
+      "pregunta": "¿Para qué sirve el profesor de apoyo que manda mi instituto a la PAU?",
+      "anclas": [
+        {
+          "doc": "doc04",
+          "texto": "Orientación y asistencia a los estudiantes de su centro durante los días"
+        }
+      ],
+      "dato_clave": [
+        "orientación|asistencia"
+      ]
+    },
+    {
+      "id": "P15",
+      "tipo": "normal",
+      "pregunta": "Si me ingresan en el hospital y no puedo ir a la convocatoria ordinaria, ¿cómo me examino?",
+      "anclas": [
+        {
+          "doc": "doc03",
+          "texto": "no concurra a la convocatoria ordinaria, realizará los exámenes en la convocatoria extraordinaria"
+        }
+      ],
+      "dato_clave": [
+        "extraordinaria",
+        "matrícula|matricul"
+      ]
+    },
+    {
+      "id": "P16",
+      "tipo": "dificil",
+      "pregunta": "Si llevo el móvil apagado en el bolsillo y no lo toco en todo el examen, ¿me pueden sancionar igualmente?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc05",
+              "texto": "se considerará falta el simple hecho de tener al alcance material"
+            },
+            {
+              "doc": "doc11",
+              "texto": "se considerará falta el simple hecho de tener al alcance material"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "al alcance|aun cuando no|aunque no"
+      ],
+      "por_que_dificil": "coloquial y con sinónimo: «en el bolsillo» y «no lo toco» frente a «tener al alcance» y «aun cuando no se esté haciendo uso»"
+    },
+    {
+      "id": "P17",
+      "tipo": "dificil",
+      "pregunta": "¿Dónde tengo que guardar el móvil durante un examen de la PAU y qué me pasa si me encuentran un dispositivo no autorizado?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc11",
+              "texto": "deberán permanecer completamente apagados y guardados en la mochila"
+            },
+            {
+              "doc": "doc09",
+              "texto": "deberán estar totalmente apagados y guardados en la mochila, bolso o cartera"
+            },
+            {
+              "doc": "doc08",
+              "texto": "y guardados siempre en la mochila"
+            },
+            {
+              "doc": "doc09",
+              "texto": "deben estar totalmente apagados y guardados dentro de la mochila o bolso"
+            }
+          ]
+        },
+        {
+          "alternativas": [
+            {
+              "doc": "doc05",
+              "texto": "La detección de un dispositivo electrónico no autorizado comportará la calificación de 0"
+            },
+            {
+              "doc": "doc11",
+              "texto": "actuación en caso de infracciones y la calificación de 0 (cero) en el examen"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "mochila",
+        "calificación de 0|un 0|un cero|cero|nota de 0"
+      ],
+      "por_que_dificil": "necesita dos fragmentos: dónde se guarda el móvil y la consecuencia de que lo detecten"
+    },
+    {
+      "id": "P18",
+      "tipo": "dificil",
+      "pregunta": "Si pido revisión porque creo que me han sumado mal un punto, ¿me lo pueden corregir y luego acabar poniéndome menos nota que la que tenía?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc13",
+              "texto": "que no podrá ser inferior a la publicada previamente a la solicitud de revisión"
+            },
+            {
+              "doc": "doc17",
+              "texto": "se rectificará la calificación, que no podrá ser inferior a la otorgada en la primera corrección"
+            },
+            {
+              "doc": "doc08",
+              "texto": "Si ha habido algún error material se corrige, siempre y cuando ese error beneficie al estudiante"
+            }
+          ]
+        },
+        {
+          "alternativas": [
+            {
+              "doc": "doc13",
+              "texto": "El resultado podrá suponer una nota final igual, inferior o superior a la obtenida en la primera corrección"
+            },
+            {
+              "doc": "doc17",
+              "texto": "La calificación final del ejercicio será la media aritmética entre la calificación otorgada tras la primera corrección"
+            },
+            {
+              "doc": "doc08",
+              "texto": "el proceso de revisión puede dar lugar a que baje la nota"
+            }
+          ]
+        }
+      ],
+      "dato_clave": [
+        "inferior|media aritmética|baje|bajar|menor|menos"
+      ],
+      "por_que_dificil": "hay que distinguir dos pasos de la revisión: el error de suma, que nunca baja la nota, y la segunda corrección, que sí puede bajarla; «menos nota» frente a «inferior»"
+    },
+    {
+      "id": "P19",
+      "tipo": "dificil",
+      "pregunta": "Aprobé asignaturas de la parte voluntaria en 2024. ¿Me sirven para pedir plaza en el curso 2026-2027? ¿Y en el 2027-2028?",
+      "anclas": [
+        {
+          "alternativas": [
+            {
+              "doc": "doc06",
+              "texto": "tendrán validez durante el curso que se inicie inmediatamente después de la superación de la prueba y los dos cursos académicos siguientes"
+            },
+            {
+              "doc": "doc07",
+              "texto": "tendrán validez durante el curso que se inicie inmediatamente después de la superación de la prueba y los dos cursos académicos siguientes"
+            },
+            {
+              "doc": "doc13",
+              "texto": "inmediatamente después de la superación de la prueba y los dos cursos siguientes a este"
+            },
+            {
+              "doc": "doc14",
+              "texto": "curso que se inicie inmediatamente después de su superación y los dos cursos siguientes a este"
+            },
+            {
+              "doc": "doc16",
+              "texto": "después del curso en que se supere la prueba de acceso a la universidad y para los dos cursos"
+            },
+            {
+              "doc": "doc20",
+              "texto": "inmediatamente después de la superación de las pruebas y los dos cursos"
+            }
+          ]
+        },
+        {
+          "doc": "doc20",
+          "texto": "Para la admisión en el curso 2027-28 serán válidas las materias superadas con una calificación de 5 o superior en los años 2025 / 2026 / 2027"
+        }
+      ],
+      "dato_clave": [
+        "2025"
+      ],
+      "por_que_dificil": "hay que aplicar la regla de validez (el curso siguiente y dos más) a dos cursos distintos, y para 2027-28 combinarla con la tabla de la UAH (solo 2025, 2026 y 2027)"
+    },
+    {
+      "id": "P20",
+      "tipo": "dificil",
+      "pregunta": "Tengo dislexia y tuve adaptaciones en Bachillerato. ¿Cuánto tiempo extra como máximo me pueden dar en cada examen de la PAU 2026 y hasta cuándo había que pedirlo?",
+      "anclas": [
+        {
+          "doc": "doc19",
+          "texto": "TIEMPO ADICIONAL (máximo 30 minutos para cada examen)"
+        },
+        {
+          "doc": "doc19",
+          "texto": "La solicitud deberá presentarse del 1 de diciembre de 2025 al 20 de enero de 2026"
+        }
+      ],
+      "dato_clave": [
+        "30 minutos",
+        "20 de enero"
+      ],
+      "por_que_dificil": "necesita dos fragmentos del mismo documento, separados: el tiempo adicional del grupo 2 y el plazo de solicitud"
+    },
+    {
+      "id": "P21",
+      "tipo": "sin_respuesta",
+      "pregunta": "¿Cuál fue la nota de corte de Medicina en la Complutense para el curso 2026-2027?",
+      "anclas": [],
+      "dato_clave": [],
+      "comprobado_que_no_esta": "Ctrl+F «nota de corte», «Medicina»: doc15 explica qué son las notas de corte pero no da ninguna cifra; doc20 solo trae ponderaciones"
+    },
+    {
+      "id": "P22",
+      "tipo": "sin_respuesta",
+      "pregunta": "¿Cuántos estudiantes se presentaron a la PAU en Madrid en 2026?",
+      "anclas": [],
+      "dato_clave": [],
+      "comprobado_que_no_esta": "Ctrl+F «estudiantes se presentaron», «presentados», «42.000»: no aparece ninguna cifra de participación"
+    },
+    {
+      "id": "P23",
+      "tipo": "sin_respuesta",
+      "pregunta": "¿Hay aparcamiento para coches en las sedes donde se hace el examen?",
+      "anclas": [],
+      "dato_clave": [],
+      "comprobado_que_no_esta": "Ctrl+F «aparcamiento», «parking»: no aparece; doc08 solo recomienda el transporte público"
+    },
+    {
+      "id": "P24",
+      "tipo": "sin_respuesta",
+      "pregunta": "¿Me dejan llevar comida o un bocadillo al aula durante el examen?",
+      "anclas": [],
+      "dato_clave": [],
+      "comprobado_que_no_esta": "Ctrl+F «comida», «bocadillo», «alimento»: no aparece; «agua» solo sale como material de Dibujo"
+    },
+    {
+      "id": "P25",
+      "tipo": "sin_respuesta",
+      "pregunta": "¿Cuánto cuesta el crédito en primera matrícula del primer curso del Grado en Ingeniería Informática de la UPM?",
+      "anclas": [],
+      "dato_clave": [],
+      "comprobado_que_no_esta": "Ctrl+F «por crédito», «precio del crédito»: no aparece; doc15 solo da cuantías de becas"
+    }
+  ]
+}

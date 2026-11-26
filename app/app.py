@@ -15,8 +15,9 @@ import webbrowser
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
+for flujo in (sys.stdout, sys.stderr):      # también stderr: los mensajes de error salían con las tildes rotas en algunas consolas
+    if hasattr(flujo, 'reconfigure'):
+        flujo.reconfigure(encoding='utf-8')
 
 from app.rag.config import RAIZ, ConfigRAG  # noqa: E402
 
@@ -26,13 +27,25 @@ def salir(mensaje: str) -> None:
     sys.exit(1)
 
 
+def mensaje_ollama_apagado(servidor: str, tipo_error: str) -> str:
+    """Texto para cuando Ollama no responde: qué pasa, qué hacer (en orden) y cómo comprobarlo."""
+    return (f'Ollama no está funcionando (no responde en {servidor}).\n'
+            '  1. Ábrelo: busca «Ollama» en el menú Inicio (después aparece un icono junto al reloj) '
+            'o ejecuta `ollama serve` en otra terminal.\n'
+            '  2. Si no lo tienes instalado: https://ollama.com/download\n'
+            '  3. Comprueba que responde con `ollama list` y vuelve a ejecutar `python -m app.app`.\n'
+            f'  (Detalle técnico: {tipo_error})')
+
+
 def comprobar_ollama(cfg: ConfigRAG) -> None:
+    import os
+
     import ollama
     try:
         modelos = {m.model for m in ollama.Client().list().models}
     except Exception as e:  # noqa: BLE001  (ConnectionError, httpx, etc.)
-        salir('Ollama no responde. Instálalo desde https://ollama.com/download y ábrelo '
-              f'(o ejecuta `ollama serve`); comprueba con `ollama --version`. Detalle: {type(e).__name__}')
+        servidor = os.environ.get('OLLAMA_HOST', '').strip() or 'http://localhost:11434'
+        salir(mensaje_ollama_apagado(servidor, type(e).__name__))
     if cfg.modelo not in modelos and f'{cfg.modelo}:latest' not in modelos:
         salir(f'el modelo {cfg.modelo} no está descargado. Ejecuta:  ollama pull {cfg.modelo}')
     print(f'[ok] Ollama responde y {cfg.modelo} está descargado.')

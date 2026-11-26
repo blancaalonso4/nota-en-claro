@@ -208,3 +208,11 @@ Prueba hecha a mano por el equipo el 2026-11-26 (**observada**, una vez cada cas
 ## 2026-11-26 · Sesión 5 · MEJORA 3: qué hacer después de crear la hoja de notas
 - **Decisión:** tras «Crear mi hoja de notas» (y también si ya existía), además del enlace la interfaz dice: «Ábrela con la cuenta de Google conectada, rellénala y luego pídeme «calcula mi nota de admisión»» (constante `INSTRUCCIONES_HOJA` en `app/interfaz.py`).
 - **Por qué:** en la prueba manual solo salía el enlace y no quedaba claro el paso siguiente. **Comprobado con AppTest** (texto y enlace presentes); no cambia ninguna llamada a Google.
+
+## 2026-11-26 · Sesión 6 · Prueba manual con Ollama y Google reales (tras los arreglos de la sesión 5)
+Prueba hecha a mano por el equipo el 2026-11-26 (**observada**, una vez cada caso; sin cifras de tiempo ni de tokens).
+- **OK · FALLO 1 corregido:** «plazas de Medicina en la UCM» va ahora a normativa y responde «no consta».
+- **OK · calculadora:** nota de admisión **10,400** desde la hoja de Google y **11,000** desde la tabla manual tras cambiar Química a 9; ambas comprobadas a mano.
+- **OK con huecos · correo:** el borrador se crea y el envío con botón funciona, pero el texto trae marcadores sin rellenar («[Nombre del orientador]», «[Tu nombre]»).
+- **FALLO · plan de estudio con el calendario real: 0 eventos.** Traza de la sesión, pasos 12-19: el modelo propuso dos veces sesiones que empezaban en el pasado, el verificador las rechazó y el agente se rindió (se agotaron las vueltas).
+- Qué se hace con cada punto: A (plan), B (correo), C, D, E (mejoras de la hoja, la tabla y la calculadora) y F (arranque sin Ollama), en las entradas siguientes, una por arreglo.

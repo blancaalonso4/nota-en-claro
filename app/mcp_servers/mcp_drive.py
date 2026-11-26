@@ -15,6 +15,7 @@ from .comun import ErrorGoogle, convertir_errores, leer_estado, limpiar_texto, l
 TITULO_HOJA = 'Mis notas'
 CARPETA_INFORMES = 'Nota en Claro · Informes'
 FILAS_NOTAS = 40
+LOCALE_HOJA = 'es_ES'     # decimales con coma
 URL_TABLAS = 'consulta la tabla de ponderaciones publicada por tu universidad'
 
 
@@ -108,27 +109,55 @@ def sesiones_sugeridas(materias: list[dict], total: int = TOTAL_SESIONES) -> lis
     return sorted(res, key=lambda r: -r['sesiones'])
 
 
+AMARILLO = {'red': 1.0, 'green': 0.95, 'blue': 0.6}      # casillas que hay que rellenar
+AVISO_ESCRIBE_AQUI = '← escribe aquí'
+SEGUNDA_LENGUA = ('Segunda lengua: pon «sí» solo en una asignatura que sea una segunda lengua extranjera (la adicional). '
+                  'Si te examinas de dos idiomas extranjeros en la fase de admisión, solo pondera uno: el que te dé mejor nota de admisión '
+                  '(doc06, apartado 8). Por eso la app nunca suma dos asignaturas marcadas con «sí»; en las demás pon «no».')
+
+
 def _peticion_crear_hoja() -> dict:
+    """Cuerpo de spreadsheets.create. Configuración regional española (es_ES): los decimales se escriben con coma (8,5)."""
     cabecera = ['Asignatura', 'Nota', 'Fase (acceso / admisión)', 'Ponderación (0 / 0,1 / 0,2)', 'Segunda lengua (sí / no)']
-    fila = lambda *v: {'values': [{'userEnteredValue': ({'numberValue': x} if isinstance(x, (int, float)) else {'stringValue': x})} for x in v]}
-    return {'properties': {'title': TITULO_HOJA}, 'sheets': [
-        {'properties': {'title': 'Datos', 'sheetId': 0}, 'data': [{'startRow': 0, 'startColumn': 0, 'rowData': [
-            fila('Nota media de Bachillerato (0-10)', ''), fila('Grado que quieres pedir', '')]}]},
+
+    def celda(x, formato=None):
+        c = {'userEnteredValue': {'numberValue': x} if isinstance(x, (int, float)) else {'stringValue': x}}
+        if formato:
+            c['userEnteredFormat'] = formato
+        return c
+
+    fila = lambda *v: {'values': [celda(x) for x in v]}
+    # En «Datos» la casilla B se resalta en amarillo y la C dice dónde escribir
+    casilla = {'backgroundColor': AMARILLO}
+    aviso = {'textFormat': {'italic': True, 'foregroundColor': {'red': 0.6, 'green': 0.3, 'blue': 0.0}}}
+    fila_dato = lambda texto: {'values': [celda(texto), {'userEnteredFormat': casilla}, celda(AVISO_ESCRIBE_AQUI, aviso)]}
+    return {'properties': {'title': TITULO_HOJA, 'locale': LOCALE_HOJA, 'timeZone': comun.zona_horaria()}, 'sheets': [
+        {'properties': {'title': 'Datos', 'sheetId': 0, 'gridProperties': {'columnCount': 3}},
+         'data': [{'startRow': 0, 'startColumn': 0, 'rowData': [
+             fila_dato('Nota media de Bachillerato (0-10)'), fila_dato('Grado que quieres pedir')],
+             'columnMetadata': [{'pixelSize': 280}, {'pixelSize': 160}, {'pixelSize': 140}]}]},
         {'properties': {'title': 'Notas', 'sheetId': 1, 'gridProperties': {'frozenRowCount': 1}},
          'data': [{'startRow': 0, 'startColumn': 0, 'rowData': [fila(*cabecera)]}]},
         {'properties': {'title': 'Instrucciones', 'sheetId': 2}, 'data': [{'startRow': 0, 'startColumn': 0, 'rowData': [
-            fila('1. En «Datos» escribe tu nota media de Bachillerato (sin contar Religión).'),
+            fila('1. En «Datos» escribe tu nota media de Bachillerato (sin contar Religión) en la casilla amarilla. Los decimales, con coma (8,5).'),
             fila('2. En «Notas» escribe una fila por asignatura: nota (0-10), fase (acceso o admisión), ponderación para tu grado (0, 0,1 o 0,2) y si es segunda lengua.'),
             fila('3. De la fase de acceso solo pondera la materia obligatoria de modalidad; deja 0 en las demás.'),
             fila('4. La ponderación la dicta tu universidad y tu grado: ' + URL_TABLAS),
+            fila('5. ' + SEGUNDA_LENGUA),
             fila('Ejemplo: Matemáticas II | 8,5 | acceso | 0,2 | no'),
             fila('Ejemplo: Física | 7,5 | admisión | 0,2 | no')]}]}]}
+
+
+def _en_locale(n) -> str:
+    """Número tal como lo escribiría el estudiante en la hoja es_ES (coma decimal): las condiciones de validación se interpretan
+    «como si se escribieran en una celda», y con es_ES la API rechaza «0.2» (medido contra Google el 2026-11-26)."""
+    return str(n).replace('.', ',')
 
 
 def _validaciones() -> dict:
     def regla(col, tipo, valores=None, minimo=None, maximo=None):
         cond = ({'type': 'ONE_OF_LIST', 'values': [{'userEnteredValue': v} for v in valores]} if valores
-                else {'type': 'NUMBER_BETWEEN', 'values': [{'userEnteredValue': str(minimo)}, {'userEnteredValue': str(maximo)}]})
+                else {'type': 'NUMBER_BETWEEN', 'values': [{'userEnteredValue': _en_locale(minimo)}, {'userEnteredValue': _en_locale(maximo)}]})
         return {'setDataValidation': {'range': {'sheetId': 1, 'startRowIndex': 1, 'endRowIndex': FILAS_NOTAS,
                                                  'startColumnIndex': col, 'endColumnIndex': col + 1},
                                       'rule': {'condition': cond, 'strict': True, 'showCustomUi': True}}}

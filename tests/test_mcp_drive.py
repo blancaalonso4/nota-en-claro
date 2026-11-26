@@ -136,3 +136,41 @@ def test_sesiones_empate_gana_la_peor_nota_y_sin_notas_no_hay_reparto():
 
 def test_una_sola_materia_no_pasa_del_tope():
     assert _reparto(_mats(A=6.0)) == {'A': 6}
+
+
+# --- hoja «Mis notas» en es_ES (sesión 6) ---------------------------------------------------------------------------------
+
+def _hojas():
+    cuerpo = mcp_drive._peticion_crear_hoja()
+    return cuerpo, {h['properties']['title']: h for h in cuerpo['sheets']}
+
+
+def test_hoja_con_configuracion_regional_espanola():
+    cuerpo, _ = _hojas()
+    assert cuerpo['properties']['locale'] == 'es_ES' and cuerpo['properties']['timeZone']
+
+
+def test_datos_resalta_las_casillas_y_dice_escribe_aqui():
+    _, hojas = _hojas()
+    filas = hojas['Datos']['data'][0]['rowData']
+    assert len(filas) == 2
+    for f in filas:
+        casilla, aviso = f['values'][1], f['values'][2]
+        assert casilla['userEnteredFormat']['backgroundColor'] == mcp_drive.AMARILLO and 'userEnteredValue' not in casilla
+        assert aviso['userEnteredValue']['stringValue'] == '← escribe aquí'
+    assert hojas['Datos']['data'][0]['rowData'][0]['values'][0]['userEnteredValue']['stringValue'].startswith('Nota media')
+
+
+def test_instrucciones_explican_la_segunda_lengua():
+    _, hojas = _hojas()
+    textos = [f['values'][0]['userEnteredValue']['stringValue'] for f in hojas['Instrucciones']['data'][0]['rowData']]
+    seg = next(t for t in textos if 'Segunda lengua' in t)
+    assert 'dos idiomas extranjeros' in seg and 'solo pondera uno' in seg and 'doc06' in seg and 'apartado 8' in seg
+
+
+def test_las_validaciones_usan_la_coma_decimal_de_es_ES():
+    reglas = mcp_drive._validaciones()['requests']
+    pond = next(r for r in reglas if r['setDataValidation']['range']['startColumnIndex'] == 3)
+    assert [v['userEnteredValue'] for v in pond['setDataValidation']['rule']['condition']['values']] == ['0', '0,2']
+    assert 'tipo' not in str(reglas) and '.' not in ''.join(v['userEnteredValue'] for r in reglas
+                                                           for v in r['setDataValidation']['rule']['condition']['values'])

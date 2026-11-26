@@ -36,7 +36,10 @@ class RagFalso:
 
 
 class AccionesFalso:
-    def ejecutar(self, intencion, peticion, dias):
+    ultimo_contacto = None
+
+    def ejecutar(self, intencion, peticion, dias, contacto=None):
+        AccionesFalso.ultimo_contacto = contacto
         borrador = {'borrador_id': 'R1', 'destinatario': ORI, 'asunto': 'Reunión', 'cuerpo': 'Hola, ¿nos vemos el jueves?'}
         return NS(ok=True, texto='He creado un borrador para el orientador (sin enviar).', error='',
                   borrador=borrador if intencion == 'correo_orientador' else None, eventos=[], informe=None)
@@ -204,3 +207,47 @@ def test_la_columna_ponderacion_tiene_ancho_suficiente_y_la_tabla_cabe(app, monk
     assert anchos['Ponderación'] >= 120                       # «Ponderación» (11 letras) y su desplegable se ven enteros
     assert anchos == {k: ANCHOS_TABLA[k] for k in anchos} and len(anchos) == 5
     assert sum(ANCHOS_TABLA.values()) <= 620                  # con el margen del editor cabe en la columna central de Streamlit con la barra lateral abierta
+
+
+# --- datos de contacto del estudiante (sesión 6) ---------------------------------------------------------------------------
+
+def campos_contacto(at):
+    return {t.label: t for t in at.main.text_input}
+
+
+def test_los_campos_de_contacto_estan_junto_a_la_tabla_de_notas(app):
+    at = app('correo_orientador')
+    assert set(campos_contacto(at)) == {'Tu nombre', 'Nombre de tu orientador', 'Correo de tu orientador'}
+    assert any(e.label == 'Tus datos de contacto (para el correo a tu orientador)' for e in at.expander)
+    assert not at.sidebar.text_input                                   # ya no se configuran en la barra lateral ni en .env
+
+
+def test_lo_guardado_en_los_campos_llega_al_agente_de_correo(app):
+    at = app('correo_orientador')
+    c = campos_contacto(at)
+    c['Tu nombre'].set_value('Luis Pérez')
+    c['Nombre de tu orientador'].set_value('Marta Gil')
+    c['Correo de tu orientador'].set_value(' marta.gil@instituto.es ')
+    next(b for b in at.button if b.label == 'Guardar mis datos').click().run()
+    assert any('Datos guardados' in x.value for x in at.success)
+    at.chat_input[0].set_value('escribe a mi orientador').run()
+    contacto = AccionesFalso.ultimo_contacto
+    assert (contacto.nombre_estudiante, contacto.nombre_orientador, contacto.correo_orientador) == ('Luis Pérez', 'Marta Gil', 'marta.gil@instituto.es')
+
+
+def test_un_correo_no_valido_no_se_guarda(app):
+    at = app('correo_orientador')
+    for malo in ('marta', 'a@b.es, c@d.es'):
+        campos_contacto(at)['Correo de tu orientador'].set_value(malo)
+        next(b for b in at.button if b.label == 'Guardar mis datos').click().run()
+        assert any('no es válido' in e.value for e in at.error), malo
+    assert at.session_state['contacto_manual'] is None
+
+
+def test_el_aviso_de_falta_de_correo_sale_como_respuesta(app, monkeypatch):
+    from app.agentes.acciones import AgenteAcciones
+    from app.contacto import MENSAJE_FALTA_CORREO
+    monkeypatch.setattr(servicios, 'estado_google', lambda: {'credenciales': True, 'tokens': {'drive': True, 'calendar': True, 'gmail': True},
+                                                              'orientador': None, 'lista': True, 'hoja_notas_id': 'H1'})
+    r = AgenteAcciones(None, None, cliente=object()).ejecutar('correo_orientador', 'escribe')
+    assert not r.ok and r.error == MENSAJE_FALTA_CORREO and 'Correo de tu orientador' in r.error

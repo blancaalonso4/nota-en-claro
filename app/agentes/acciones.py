@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 
 import ollama
 
+from app.contacto import MENSAJE_FALTA_CORREO, Contacto
 from app.rag.config import ConfigRAG
 
 from . import permisos
@@ -50,6 +51,8 @@ SISTEMA = {
 }
 RECORDATORIO_EVENTOS = ('\nAhora llama a planificar_sesiones con las sesiones: hueco (número), asignatura y minutos (60, 90 o 120). '
                         'No escribas fechas ni horas ni el plan en texto.')
+# Argumentos que el programa añade con el correo que escribió el estudiante (el modelo no los ve): herramienta -> argumento
+CORREO_INYECTADO = {'crear_borrador': 'destinatario', 'leer_correos_orientador': 'remitente'}
 ESCRITURAS = {'crear_eventos_estudio', 'planificar_sesiones', 'guardar_informe', 'crear_borrador'}
 
 
@@ -101,9 +104,11 @@ class AgenteAcciones:
                  zona: str = 'Europe/Madrid', ahora_fn=None, max_vueltas: int = MAX_VUELTAS,
                  nombre_estudiante: str | None = None, nombre_orientador: str | None = None):
         self.puente, self.traza, self.cfg = puente, traza, cfg or ConfigRAG()
-        self.nombre_estudiante, self.nombre_orientador = (nombre_estudiante or '').strip(), (nombre_orientador or '').strip()
+        # lo que se pasa al constructor es solo el valor por defecto (.env de la demo): los datos del estudiante llegan en ejecutar()
+        self.defecto = Contacto(nombre_estudiante or '', nombre_orientador or '', orientador or '')
+        self._contacto = self.defecto
         self.cliente = cliente or ollama.Client()
-        self.orientador, self.zona, self.max_vueltas = orientador, zona, max_vueltas
+        self.zona, self.max_vueltas = zona, max_vueltas
         self._ahora = ahora_fn or (lambda: datetime.now(ZoneInfo(zona)))
 
     def _opciones(self) -> dict:
@@ -113,15 +118,19 @@ class AgenteAcciones:
             o['num_thread'] = c.num_thread
         return o
 
-    def ejecutar(self, intencion: str, peticion: str, dias: int = 7) -> ResultadoAcciones:
+    def ejecutar(self, intencion: str, peticion: str, dias: int = 7, contacto: Contacto | None = None) -> ResultadoAcciones:
         if intencion not in SISTEMA:
             return ResultadoAcciones(error=f'La intención «{intencion}» no es de acciones.')
+        self._contacto = (contacto or Contacto()).con_respaldo(self.defecto)
+        if intencion == 'correo_orientador' and not self._contacto.correo_ok:
+            # sin el correo que escribe el estudiante no se hace nada (ni se llama al modelo): se le pide que lo rellene
+            return ResultadoAcciones(error=MENSAJE_FALTA_CORREO)
         ahora = self._ahora()
         hasta = ahora + timedelta(days=dias)
         usuario = (f'Hoy es {_fecha_es(ahora)} de {ahora.year} ({ahora.date().isoformat()}). Petición: {peticion.strip()[:400]}'
                    + (f' Plan para los próximos {dias} días: de {ahora.date().isoformat()} a {hasta.date().isoformat()}.'
                       if intencion == 'plan_estudio' else ''))
-        sistema = SISTEMA[intencion] + (instrucciones_nombres(self.nombre_estudiante, self.nombre_orientador)
+        sistema = SISTEMA[intencion] + (instrucciones_nombres(self._contacto.nombre_estudiante, self._contacto.nombre_orientador)
                                         if intencion == 'correo_orientador' else '')
         mensajes = [{'role': 'system', 'content': sistema}, {'role': 'user', 'content': usuario}]
         nombres = herramientas_de(intencion)
@@ -190,16 +199,26 @@ class AgenteAcciones:
                                      error='; '.join(errores), argumentos=resumen_argumentos(args))
                 return 'ERROR en las sesiones: ' + '; '.join(errores) + '. Corrige la llamada.', '', False
             nombre, args = 'crear_eventos_estudio', {'eventos': eventos}
+        correo = self._contacto.correo_orientador
         v = verificar(nombre, args, ahora=self._ahora_fija, zona=self.zona, huecos=self._huecos, dias=self._dias,
-                      orientador=self.orientador)
+                      orientador=correo)
         if not v.ok:
             self.traza.registrar('verificador', 'acciones', herramienta=nombre, permiso=permiso, fallo=True, error=str(v),
                                  argumentos=resumen_argumentos(args))
             return f'ERROR en los argumentos: {v}. Corrige la llamada.', '', False
+        args_traza = args
+        if nombre in CORREO_INYECTADO:
+            # el destinatario (o el remitente que se busca) lo pone el programa con el correo del estudiante; segunda comprobación
+            args = args | {CORREO_INYECTADO[nombre]: correo}
+            v = verificar(nombre, args, orientador=correo, interno=True)
+            if not v.ok:
+                self.traza.registrar('verificador', 'acciones', herramienta=nombre, permiso=permiso, fallo=True, error=str(v),
+                                     argumentos=resumen_argumentos(args_traza))
+                return f'ERROR: {v}.', '', False
         r = self.puente.llamar(nombre, args)
         self.traza.registrar('herramienta', 'acciones', herramienta=nombre, permiso=permiso, segundos=r.segundos,
                              fallo=not r.ok, error=(r.detalle or r.mensaje) if not r.ok else '', reintento=r.reintentos > 0,
-                             argumentos=resumen_argumentos(args))
+                             argumentos=resumen_argumentos(args_traza))
         if not r.ok:
             return f'ERROR: {r.mensaje}', r.mensaje or 'Ha fallado una herramienta.', False
         self._ctx.marcar_lectura(nombre)

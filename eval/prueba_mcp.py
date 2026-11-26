@@ -59,7 +59,7 @@ def main(argv: list[str]) -> int:
             paso('5. Crear un evento de estudio', 'crear_eventos_estudio', {'eventos': [ctx['evento']]}, resumen=lambda d: f"{len(d['creados'])} creado(s)")
         paso('6. Listar eventos de estudio', 'listar_eventos', {'desde': desde, 'hasta': hasta}, resumen=lambda d: f"{len(d['eventos'])} evento(s)")
         paso('7. Leer correos del orientador', 'leer_correos_orientador', resumen=lambda d: f"{len(d['correos'])} correo(s) leídos")
-        r = paso('8. Crear borrador', 'crear_borrador', {'asunto': 'Prueba de Nota en Claro', 'cuerpo': 'Correo de prueba generado por eval/prueba_mcp.py.'},
+        r = paso('8. Crear borrador', 'crear_borrador', {'asunto': 'Prueba de Nota en Claro', 'cuerpo': 'Correo de prueba generado por eval/prueba_mcp.py.', 'destinatario': comun.orientador()},
                  resumen=lambda d: f"destinatario={d['destinatario']}")
         if con_envio and r.ok:
             t0 = time.perf_counter()

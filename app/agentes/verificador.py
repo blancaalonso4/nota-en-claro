@@ -25,10 +25,12 @@ CLAVES_PERMITIDAS: dict[str, set[str]] = {
     'listar_eventos': {'desde', 'hasta'},
     'huecos_libres': {'desde', 'hasta'},
     'crear_eventos_estudio': {'eventos'},
-    'leer_correos_orientador': {'max'},
+    'leer_correos_orientador': {'max'},      # el remitente lo pone Python (INTERNAS), nunca el modelo
     'crear_borrador': {'asunto', 'cuerpo'},
-    'enviar_borrador': {'borrador_id', 'cuerpo'},
+    'enviar_borrador': {'borrador_id', 'cuerpo', 'destinatario'},
 }
+# Argumentos que solo añade el programa tras leer los datos del estudiante (con `interno=True`); si los trae el modelo, se rechazan.
+INTERNAS: dict[str, set[str]] = {'crear_borrador': {'destinatario'}, 'leer_correos_orientador': {'remitente'}}
 CLAVES_EVENTO = {'titulo', 'inicio', 'fin', 'descripcion'}
 
 _RE_MARCADOR = re.compile(r'\[[^\]\n]*\]')
@@ -67,8 +69,16 @@ def a_fecha(valor, zona: str = ZONA_POR_DEFECTO) -> datetime:
     return a_datetime(valor, zona)
 
 
+_RE_CORREO = re.compile(r'^[^@\s<>,;\[\]()"]+@[^@\s<>,;\[\]()"]+\.[^@\s<>,;\[\]()"]+$')
+
+
+def correo_valido(c) -> bool:
+    """Una sola dirección, sin espacios, saltos de línea, comas ni corchetes (así no se cuelan cabeceras ni destinatarios extra)."""
+    return isinstance(c, str) and len(c) <= 120 and bool(_RE_CORREO.match(c.strip()))
+
+
 def destinatario_permitido(destinatario: str | None, orientador: str | None) -> bool:
-    """El único destinatario posible es el orientador configurado en .env (comparación sin mayúsculas ni espacios)."""
+    """El único destinatario posible es el correo del orientador que escribió el estudiante (sin mayúsculas ni espacios)."""
     if not destinatario or not orientador:
         return False
     return destinatario.strip().lower() == orientador.strip().lower()
@@ -144,9 +154,11 @@ def _eventos(args: dict, r: Resultado, zona: str, ahora: datetime, huecos, dias:
 
 def verificar(herramienta: str, args, *, ahora: datetime | None = None, zona: str = ZONA_POR_DEFECTO,
               huecos: list[dict] | None = None, dias: int = 7, orientador: str | None = None,
-              confirmado_por_usuario: bool = False) -> Resultado:
+              confirmado_por_usuario: bool = False, interno: bool = False) -> Resultado:
     """Comprueba los argumentos de una llamada a herramienta. `huecos` son los intervalos libres que devolvió
-    huecos_libres en esta ejecución; `dias` el horizonte pedido; `orientador` el correo de .env."""
+    huecos_libres en esta ejecución; `dias` el horizonte pedido; `orientador` el correo del orientador que escribió el estudiante.
+    `interno=True` es la segunda comprobación, con los argumentos que el programa añade (destinatario o remitente): deben ser
+    exactamente ese correo."""
     r = Resultado()
     if herramienta not in CLAVES_PERMITIDAS:
         r.error(f'«{herramienta}» no es una herramienta conocida')
@@ -156,7 +168,7 @@ def verificar(herramienta: str, args, *, ahora: datetime | None = None, zona: st
     if not isinstance(args, dict):
         r.error('los argumentos deben ser un objeto')
         return r
-    raros = set(args) - CLAVES_PERMITIDAS[herramienta]
+    raros = set(args) - CLAVES_PERMITIDAS[herramienta] - (INTERNAS.get(herramienta, set()) if interno else set())
     if raros:
         r.error(f'argumentos no permitidos: {sorted(raros)}')
         return r
@@ -182,12 +194,16 @@ def verificar(herramienta: str, args, *, ahora: datetime | None = None, zona: st
         if huecos_sin_rellenar:
             r.error(f'el borrador contiene marcadores entre corchetes sin rellenar ({", ".join(huecos_sin_rellenar[:3])}): '
                     'escribe el texto final, con los nombres reales y sin corchetes')
-        if not orientador:
-            r.error('no hay ORIENTADOR_EMAIL configurado en .env')   # el servidor pone el destinatario desde .env
+        if not correo_valido(orientador):
+            r.error('falta el correo del orientador: lo escribe el estudiante (hoja «Mis notas» o campos de la app)')
+        if interno:
+            _mismo_correo(args.get('destinatario'), orientador, r, 'el borrador')
     elif herramienta == 'leer_correos_orientador':
         m = args.get('max', 3)
         if isinstance(m, bool) or not isinstance(m, int) or not 1 <= m <= 3:
             r.error('«max» debe ser un entero entre 1 y 3')
+        if interno:
+            _mismo_correo(args.get('remitente'), orientador, r, 'la búsqueda de correos')
     elif herramienta == 'enviar_borrador':
         if not confirmado_por_usuario:
             r.error('enviar un correo exige la confirmación explícita del estudiante')
@@ -200,6 +216,15 @@ def verificar(herramienta: str, args, *, ahora: datetime | None = None, zona: st
             elif marcadores(c):
                 r.error(f'el texto contiene marcadores entre corchetes sin rellenar ({", ".join(marcadores(c)[:3])}): '
                         'sustitúyelos por el texto real antes de enviar')
-        if not orientador:
-            r.error('no hay ORIENTADOR_EMAIL configurado en .env')
+        _mismo_correo(args.get('destinatario'), orientador, r, 'el envío')
     return r
+
+
+def _mismo_correo(valor, orientador, r: Resultado, que: str) -> None:
+    """`valor` debe ser una dirección válida y exactamente el correo del orientador que puso el estudiante."""
+    if not correo_valido(orientador):
+        r.error('falta el correo del orientador: lo escribe el estudiante (hoja «Mis notas» o campos de la app)')
+    elif not correo_valido(valor):
+        r.error(f'{que} no lleva una dirección válida')
+    elif not destinatario_permitido(valor, orientador):
+        r.error(f'{que} no va exactamente al correo del orientador que puso el estudiante')

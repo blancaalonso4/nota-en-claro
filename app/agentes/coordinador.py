@@ -19,6 +19,7 @@ import ollama
 from app.rag.config import ConfigRAG
 
 from . import errores_modelo
+from app.contacto import Contacto
 from .nota_admision import calcular_desde_diccionario
 from .traza import Traza
 
@@ -103,7 +104,7 @@ class Orquestador:
     def __init__(self, coordinador: Coordinador, traza: Traza, rag=None, acciones=None, puente=None):
         self.coordinador, self.traza, self.rag, self.acciones, self.puente = coordinador, traza, rag, acciones, puente
 
-    def atender(self, peticion: str, notas_manuales: dict | None = None):
+    def atender(self, peticion: str, notas_manuales: dict | None = None, contacto_manual: dict | None = None):
         """Generador de eventos para la interfaz:
         {'intencion': str}, {'trozo': str} (solo normativa), y al final {'resultado': dict} con 'intencion', 'texto' y los
         datos propios de cada trabajador (fuente, borrador, eventos...)."""
@@ -120,9 +121,23 @@ class Orquestador:
         elif d.intencion == 'nota_admision':
             yield {'resultado': self._nota(notas_manuales)}
         else:
-            r = self.acciones.ejecutar(d.intencion, peticion, d.dias)
+            extra = {'contacto': self._contacto(contacto_manual)} if d.intencion == 'correo_orientador' else {}
+            r = self.acciones.ejecutar(d.intencion, peticion, d.dias, **extra)
             yield {'resultado': {'intencion': d.intencion, 'texto': r.texto or r.error, 'error': not r.ok,
                                  'borrador': r.borrador, 'eventos': r.eventos, 'informe': r.informe}}
+
+    def _contacto(self, manual: dict | None) -> Contacto:
+        """Datos de contacto del estudiante: campos de la app primero y, para lo que falte, la pestaña «Datos» de su hoja.
+        (El valor por defecto del .env lo añade después el agente de acciones.) Leer la hoja es una llamada de Python, no del modelo."""
+        c = Contacto.de_dict(manual)
+        if c.completo or self.puente is None:
+            return c
+        with self.traza.paso('herramienta', 'orquestador', herramienta='leer_notas', permiso='automatico') as p:
+            r = self.puente.llamar('leer_notas')
+            if not r.ok:
+                p['fallo'], p['error'] = True, r.detalle or r.mensaje
+            p['reintento'] = r.reintentos > 0
+        return c.con_respaldo(Contacto.de_dict(r.datos)) if r.ok else c
 
     def _normativa(self, peticion: str):
         from app.rag.pipeline import formatear

@@ -43,8 +43,8 @@ def main() -> int:
         prop = hoja['properties']
         paso('3. Configuración regional', prop.get('locale') == 'es_ES', f"locale={prop.get('locale')} zona={prop.get('timeZone')}")
         datos = next(s for s in hoja['sheets'] if s['properties']['title'] == 'Datos')['data'][0]['rowData']
-        amarillas = [bool(f['values'][1].get('userEnteredFormat', {}).get('backgroundColor')) for f in datos[:2]]
-        avisos = [f['values'][2].get('formattedValue') for f in datos[:2]]
+        amarillas = [bool(f['values'][1].get('userEnteredFormat', {}).get('backgroundColor')) for f in datos[:5]]
+        avisos = [f['values'][2].get('formattedValue') for f in datos[:5]]
         paso('4. Casillas de «Datos» resaltadas y con aviso', all(amarillas) and all(a == '← escribe aquí' for a in avisos), f'resaltadas={amarillas} avisos={avisos}')
         notas = next(s for s in hoja['sheets'] if s['properties']['title'] == 'Notas')['data'][0]['rowData']
         reglas = {i: (notas[1]['values'][i].get('dataValidation') or {}).get('condition') for i in (1, 2, 3, 4)}
@@ -55,13 +55,18 @@ def main() -> int:
             body={'values': [['Matemáticas II', '8,5', 'acceso', '0,2', 'no']]}).execute()
         api.sheets.spreadsheets().values().update(
             spreadsheetId=hoja_id, range='Datos!B1', valueInputOption='USER_ENTERED', body={'values': [['8,75']]}).execute()
+        api.sheets.spreadsheets().values().update(
+            spreadsheetId=hoja_id, range='Datos!B3:B5', valueInputOption='USER_ENTERED',
+            body={'values': [['Luis Pérez'], ['Marta Gil'], ['marta.gil@instituto.es']]}).execute()
         leido = api.sheets.spreadsheets().values().batchGet(
-            spreadsheetId=hoja_id, ranges=['Datos!A1:B2', 'Notas!A2:E2'], valueRenderOption='UNFORMATTED_VALUE').execute()['valueRanges']
+            spreadsheetId=hoja_id, ranges=['Datos!A1:B5', 'Notas!A2:E2'], valueRenderOption='UNFORMATTED_VALUE').execute()['valueRanges']
         parseado = mcp_drive.parsear_hoja(leido[0].get('values', []), leido[1].get('values', []))
         bien = (parseado['nota_media_bachillerato'] == 8.75 and parseado['materias'][0]['nota'] == 8.5
                 and parseado['materias'][0]['ponderacion'] == 0.2 and not parseado['avisos'])
+        contacto = (parseado['nombre_estudiante'], parseado['nombre_orientador'], parseado['correo_orientador'])
         paso('6. Escribir «8,5», «0,2» y «8,75» (USER_ENTERED) y leerlos con leer_notas', bien,
              f"valores={leido[1]['values'][0][1:4]} media={parseado['nota_media_bachillerato']} avisos={parseado['avisos']}")
+        paso('6b. Datos de contacto escritos en «Datos» y leídos con leer_notas', contacto == ('Luis Pérez', 'Marta Gil', 'marta.gil@instituto.es'), str(contacto))
     except Exception as e:  # noqa: BLE001
         paso('Error', False, f'{type(e).__name__}: {e}')
     finally:

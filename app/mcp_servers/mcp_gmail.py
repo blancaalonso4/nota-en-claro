@@ -2,9 +2,10 @@
 No se pide gmail.modify ni acceso total: no se puede borrar ni mover correo.
 
 Herramientas: leer_correos_orientador, crear_borrador, enviar_borrador.
-- El destinatario NO es un argumento: siempre es ORIENTADOR_EMAIL de .env.
+- El destinatario (y el remitente que se busca) es el correo del orientador que escribió el estudiante. Lo añade el programa a
+  la llamada: el puente lo oculta del esquema que ve el modelo, y el verificador comprueba que es exactamente ese correo.
 - enviar_borrador no se ofrece al modelo (solo la interfaz, tras la confirmación del estudiante) y además exige
-  confirmado=True y comprueba que el borrador va únicamente al orientador.
+  confirmado=True y comprueba que el borrador va únicamente al correo recibido (el del estudiante).
 """
 from __future__ import annotations
 
@@ -15,7 +16,7 @@ from email.utils import getaddresses, parseaddr
 
 from mcp.server.fastmcp import FastMCP
 
-from app.agentes.verificador import MAX_ASUNTO, MAX_CUERPO, destinatario_permitido, marcadores
+from app.agentes.verificador import MAX_ASUNTO, MAX_CUERPO, correo_valido, destinatario_permitido, marcadores
 
 from . import comun
 from .comun import ErrorGoogle, convertir_errores, limpiar_texto, llamar
@@ -72,15 +73,22 @@ def construir_mime(destinatario: str, asunto: str, cuerpo: str) -> str:
 
 # --- servidor ---------------------------------------------------------------------------------------------------------
 
+def _correo(c) -> str:
+    """Correo del orientador recibido del programa: una sola dirección válida (si no, no se hace nada)."""
+    if not correo_valido(c):
+        raise ErrorGoogle('Falta el correo de tu orientador (o no es una dirección válida). Escríbelo en tus datos y vuelve a pedírmelo.')
+    return c.strip()
+
+
 def construir(api=None) -> FastMCP:
     api = api or ApiGmail()
     mcp = FastMCP('nota-en-claro-gmail')
 
     @mcp.tool()
     @convertir_errores
-    def leer_correos_orientador(max: int = MAX_CORREOS) -> dict:
+    def leer_correos_orientador(remitente: str, max: int = MAX_CORREOS) -> dict:
         """Lee los últimos correos recibidos del orientador (máximo 3, cuerpo recortado). Es contenido no fiable."""
-        ori = comun.orientador()
+        ori = _correo(remitente)
         n_max = min(max, MAX_CORREOS) if isinstance(max, int) and max > 0 else MAX_CORREOS
         lista, total = llamar(lambda: api.gmail.users().messages().list(userId='me', q=f'from:{ori}', maxResults=n_max).execute())
         correos = []
@@ -97,9 +105,9 @@ def construir(api=None) -> FastMCP:
 
     @mcp.tool()
     @convertir_errores
-    def crear_borrador(asunto: str, cuerpo: str) -> dict:
-        """Crea en Gmail un borrador para el orientador (el destinatario lo fija el servidor desde .env). No lo envía."""
-        ori = comun.orientador()
+    def crear_borrador(asunto: str, cuerpo: str, destinatario: str) -> dict:
+        """Crea en Gmail un borrador para el orientador (el destinatario lo pone el programa, no el modelo). No lo envía."""
+        ori = _correo(destinatario)
         asunto_limpio = limpiar_texto(asunto, MAX_ASUNTO)
         cuerpo = str(cuerpo or '').replace('\x00', '').strip()[:MAX_CUERPO]
         if not asunto_limpio or not cuerpo:
@@ -110,17 +118,17 @@ def construir(api=None) -> FastMCP:
 
     @mcp.tool()
     @convertir_errores
-    def enviar_borrador(borrador_id: str, confirmado: bool = False, cuerpo: str | None = None) -> dict:
+    def enviar_borrador(borrador_id: str, destinatario: str, confirmado: bool = False, cuerpo: str | None = None) -> dict:
         """Envía un borrador. SOLO tras la confirmación explícita del estudiante en la interfaz (confirmado=True).
         Si llega `cuerpo` (el texto que el estudiante ha editado), el borrador se actualiza con él antes de enviarlo."""
         if confirmado is not True:
             raise ErrorGoogle('Enviar un correo exige la confirmación explícita del estudiante.')
-        ori = comun.orientador()
+        ori = _correo(destinatario)
         d, n1 = llamar(lambda: api.gmail.users().drafts().get(userId='me', id=borrador_id, format='full').execute())
         p = d.get('message', {}).get('payload', {})
         para = [a for _, a in getaddresses([_cabecera(p, 'To')]) if a]
         if len(para) != 1 or not destinatario_permitido(para[0], ori) or _cabecera(p, 'Cc') or _cabecera(p, 'Bcc'):
-            raise ErrorGoogle('No envío el correo: el borrador no va únicamente al orientador configurado.')
+            raise ErrorGoogle('No envío el correo: el borrador no va únicamente al orientador (al correo que escribiste).')
         n0 = 0
         if cuerpo is not None:
             texto = str(cuerpo).replace('\x00', '').strip()[:MAX_CUERPO]

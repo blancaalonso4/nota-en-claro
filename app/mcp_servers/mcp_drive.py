@@ -9,6 +9,8 @@ from fractions import Fraction
 
 from mcp.server.fastmcp import FastMCP
 
+from app.agentes.verificador import correo_valido
+
 from . import comun
 from .comun import ErrorGoogle, convertir_errores, leer_estado, limpiar_texto, llamar
 
@@ -54,8 +56,20 @@ def parsear_hoja(datos: list[list], notas: list[list]) -> dict:
     avisos: list[str] = []
     cfb = None
     grado = ''
+    contacto = {'nombre_estudiante': '', 'nombre_orientador': '', 'correo_orientador': ''}
     for fila in datos:
-        if len(fila) >= 2 and 'media' in str(fila[0]).lower():
+        etiqueta = str(fila[0]).lower() if fila else ''
+        if len(fila) >= 2 and 'correo' in etiqueta:
+            c = str(fila[1]).strip()
+            if c and not correo_valido(c):
+                avisos.append('el correo del orientador no es una dirección válida (una sola, sin espacios)')
+                c = ''
+            contacto['correo_orientador'] = c
+        elif len(fila) >= 2 and 'orientador' in etiqueta:
+            contacto['nombre_orientador'] = limpiar_texto(fila[1], 60)
+        elif len(fila) >= 2 and etiqueta.startswith('tu nombre'):
+            contacto['nombre_estudiante'] = limpiar_texto(fila[1], 60)
+        elif len(fila) >= 2 and 'media' in etiqueta:
             cfb = _num(fila[1])
             if fila[1] not in ('', None) and (cfb is None or not 0 <= cfb <= 10):
                 avisos.append('la nota media de Bachillerato debe ser un número entre 0 y 10')
@@ -81,7 +95,7 @@ def parsear_hoja(datos: list[list], notas: list[list]) -> dict:
             fase = ''
         sl = limpiar_texto(fila[4], 3).lower() in ('si', 'sí', 's', 'x')
         materias.append({'asignatura': nombre, 'nota': nota, 'fase': fase, 'ponderacion': pond, 'segunda_lengua': sl})
-    return {'nota_media_bachillerato': cfb, 'grado': grado, 'materias': materias, 'avisos': avisos}
+    return {'nota_media_bachillerato': cfb, 'grado': grado, 'materias': materias, 'avisos': avisos, **contacto}
 
 
 TOTAL_SESIONES = 6      # tope de sesiones de un plan (llamada corta en CPU)
@@ -134,16 +148,18 @@ def _peticion_crear_hoja() -> dict:
     return {'properties': {'title': TITULO_HOJA, 'locale': LOCALE_HOJA, 'timeZone': comun.zona_horaria()}, 'sheets': [
         {'properties': {'title': 'Datos', 'sheetId': 0, 'gridProperties': {'columnCount': 3}},
          'data': [{'startRow': 0, 'startColumn': 0, 'rowData': [
-             fila_dato('Nota media de Bachillerato (0-10)'), fila_dato('Grado que quieres pedir')],
+             fila_dato('Nota media de Bachillerato (0-10)'), fila_dato('Grado que quieres pedir'),
+             fila_dato('Tu nombre'), fila_dato('Nombre de tu orientador'), fila_dato('Correo de tu orientador')],
              'columnMetadata': [{'pixelSize': 280}, {'pixelSize': 160}, {'pixelSize': 140}]}]},
         {'properties': {'title': 'Notas', 'sheetId': 1, 'gridProperties': {'frozenRowCount': 1}},
          'data': [{'startRow': 0, 'startColumn': 0, 'rowData': [fila(*cabecera)]}]},
         {'properties': {'title': 'Instrucciones', 'sheetId': 2}, 'data': [{'startRow': 0, 'startColumn': 0, 'rowData': [
             fila('1. En «Datos» escribe tu nota media de Bachillerato (sin contar Religión) en la casilla amarilla. Los decimales, con coma (8,5).'),
-            fila('2. En «Notas» escribe una fila por asignatura: nota (0-10), fase (acceso o admisión), ponderación para tu grado (0, 0,1 o 0,2) y si es segunda lengua.'),
-            fila('3. De la fase de acceso solo pondera la materia obligatoria de modalidad; deja 0 en las demás.'),
-            fila('4. La ponderación la dicta tu universidad y tu grado: ' + URL_TABLAS),
-            fila('5. ' + SEGUNDA_LENGUA),
+            fila('2. En «Datos» escribe también tu nombre y el nombre y el correo de tu orientador: se usan para el saludo, la firma y el destinatario del correo (el programa solo escribe a ese correo; el modelo no puede cambiarlo).'),
+            fila('3. En «Notas» escribe una fila por asignatura: nota (0-10), fase (acceso o admisión), ponderación para tu grado (0, 0,1 o 0,2) y si es segunda lengua.'),
+            fila('4. De la fase de acceso solo pondera la materia obligatoria de modalidad; deja 0 en las demás.'),
+            fila('5. La ponderación la dicta tu universidad y tu grado: ' + URL_TABLAS),
+            fila('6. ' + SEGUNDA_LENGUA),
             fila('Ejemplo: Matemáticas II | 8,5 | acceso | 0,2 | no'),
             fila('Ejemplo: Física | 7,5 | admisión | 0,2 | no')]}]}]}
 
@@ -200,7 +216,7 @@ def construir(api=None, estado_fn=comun.leer_estado, guardar_fn=comun.guardar_es
         if not hoja_id:
             raise ErrorGoogle('Todavía no has creado tu hoja «Mis notas». Pulsa «Crear mi hoja de notas».')
         r, n = llamar(lambda: api.sheets.spreadsheets().values().batchGet(
-            spreadsheetId=hoja_id, ranges=['Datos!A1:B2', f'Notas!A2:E{FILAS_NOTAS}'],
+            spreadsheetId=hoja_id, ranges=['Datos!A1:B5', f'Notas!A2:E{FILAS_NOTAS}'],
             valueRenderOption='UNFORMATTED_VALUE').execute())
         rangos = r.get('valueRanges', [])
         datos = rangos[0].get('values', []) if len(rangos) > 0 else []

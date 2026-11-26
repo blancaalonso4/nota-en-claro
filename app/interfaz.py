@@ -15,7 +15,7 @@ import streamlit as st  # noqa: E402
 
 from app import servicios  # noqa: E402
 from app.agentes.traza import Traza  # noqa: E402
-from app.agentes.verificador import marcadores  # noqa: E402
+from app.agentes.verificador import correo_valido, marcadores  # noqa: E402
 from app.tabla_notas import ANCHOS_TABLA, FASES, PONDERACIONES, tabla_a_notas, tabla_vacia  # noqa: E402
 
 
@@ -35,6 +35,7 @@ def iniciar_sesion():
         ss.mensajes = []          # [(rol, texto)]
         ss.borrador = None        # borrador pendiente de confirmar
         ss.notas_manuales = None
+        ss.contacto_manual = None   # nombre del estudiante, del orientador y correo del orientador (alternativa a la hoja de Drive)
 
 
 def formulario_notas():
@@ -71,6 +72,27 @@ def zona_notas_manuales():
             st.rerun()
 
 
+def zona_contacto():
+    """Datos de contacto a mano (para quien no usa Google): junto a la tabla de notas. Si están vacíos se usan los de la hoja o, en la demo, los de .env."""
+    ss = st.session_state
+    c = ss.contacto_manual or {}
+    with st.expander('Tus datos de contacto (para el correo a tu orientador)', expanded=not c):
+        with st.form('form_contacto'):
+            st.caption('El correo se escribe siempre a la dirección que pongas aquí; el modelo no puede cambiarla. '
+                       'Si dejas un campo vacío se usa el de la pestaña «Datos» de tu hoja «Mis notas».')
+            nombre = st.text_input('Tu nombre', value=c.get('nombre_estudiante', ''))
+            nombre_ori = st.text_input('Nombre de tu orientador', value=c.get('nombre_orientador', ''))
+            correo = st.text_input('Correo de tu orientador', value=c.get('correo_orientador', ''))
+            guardar = st.form_submit_button('Guardar mis datos')
+        if guardar:
+            if correo.strip() and not correo_valido(correo):
+                st.error('El correo del orientador no es válido: pon una sola dirección, sin espacios (por ejemplo orientador@instituto.es).')
+            else:
+                ss.contacto_manual = {'nombre_estudiante': nombre.strip(), 'nombre_orientador': nombre_ori.strip(),
+                                      'correo_orientador': correo.strip()}
+                st.success('Datos guardados para esta sesión.')
+
+
 def barra_lateral(recursos):
     ss = st.session_state
     g = servicios.estado_google()
@@ -85,10 +107,6 @@ def barra_lateral(recursos):
                 st.caption('Falta `credentials.json` en la raíz del proyecto.')
             elif faltan:
                 st.caption(f'Falta autorizar: {", ".join(faltan)}. Ejecuta `python -m app.mcp_servers.autorizar`.')
-            if g['orientador'] is None:
-                st.caption('Falta `ORIENTADOR_EMAIL` en el archivo `.env` (mira `.env.example`).')
-        if not g.get('nombres', True):
-            st.caption('Rellena `NOMBRE_ESTUDIANTE` y `NOMBRE_ORIENTADOR` en `.env` para que el correo salga con saludo y firma.')
         if st.button('Crear mi hoja de notas', disabled=not g['credenciales']):
             r = recursos.puente.llamar('crear_plantilla_notas')
             ss.traza.registrar('herramienta', 'interfaz', herramienta='crear_plantilla_notas', permiso='automatico',
@@ -157,7 +175,7 @@ def atender(recursos, peticion: str):
     hueco = st.empty()
     parcial, resultado = '', None
     with st.spinner('Pensando... (en CPU puede tardar uno o dos minutos)'):
-        for ev in orq.atender(peticion, notas_manuales=ss.notas_manuales):
+        for ev in orq.atender(peticion, notas_manuales=ss.notas_manuales, contacto_manual=ss.contacto_manual):
             if 'trozo' in ev:
                 parcial += ev['trozo']
                 hueco.markdown(parcial)       # texto crudo del modelo mientras llega; luego se sustituye por el validado
@@ -180,6 +198,7 @@ def main():
     st.caption('Dudas sobre la PAU de Madrid con la fuente citada, cálculo de tu nota de admisión, plan de estudio, informes y correo a tu orientador.')
     barra_lateral(recursos)
     zona_notas_manuales()
+    zona_contacto()
     for rol, texto in st.session_state.mensajes:
         with st.chat_message(rol):
             st.markdown(texto)

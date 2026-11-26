@@ -126,7 +126,7 @@ class PuenteMCP:
             if permisos.permiso_de(n) != permisos.AUTOMATICO or n not in self._esquemas:
                 continue
             e = self._esquemas[n]
-            esquema = _sin_titulos(_resolver_refs(e['schema']))
+            esquema = _ocultar(_sin_titulos(_resolver_refs(e['schema'])))
             desc = e['description'].strip().split('\n')[0]
             out.append({'type': 'function', 'function': {'name': n, 'description': desc, 'parameters': esquema}})
         return out
@@ -140,7 +140,9 @@ class PuenteMCP:
     def enviar_correo_confirmado(self, borrador_id: str, orientador: str, cuerpo: str | None = None) -> ResultadoLlamada:
         """Envío tras pulsar «Enviar» en la interfaz. Vuelve a verificar y el servidor comprueba el destinatario.
         `cuerpo` es el texto editado por el estudiante: si llega, es lo que se envía (el servidor actualiza el borrador)."""
-        args = {'borrador_id': borrador_id} | ({'cuerpo': cuerpo} if cuerpo is not None else {})
+        # `orientador` es el correo del destinatario del borrador (el que puso el estudiante); el servidor comprueba que el
+        # borrador de Gmail va exactamente a esa dirección
+        args = {'borrador_id': borrador_id, 'destinatario': orientador} | ({'cuerpo': cuerpo} if cuerpo is not None else {})
         v = verificar('enviar_borrador', args, orientador=orientador, confirmado_por_usuario=True)
         if not v.ok:
             return ResultadoLlamada(False, mensaje=str(v))
@@ -176,6 +178,18 @@ class PuenteMCP:
                 datos = {'texto': texto}
         datos = datos.get('result', datos) if isinstance(datos, dict) and set(datos) == {'result'} else datos
         return ResultadoLlamada(True, datos=datos, reintentos=int(datos.get('reintentos', 0)) if isinstance(datos, dict) else 0)
+
+
+# Campos que añade el programa con los datos del estudiante: el modelo ni los ve ni puede proponerlos.
+OCULTOS_AL_MODELO = ('destinatario', 'remitente')
+
+
+def _ocultar(esquema: dict) -> dict:
+    props = {k: v for k, v in (esquema.get('properties') or {}).items() if k not in OCULTOS_AL_MODELO}
+    out = {**esquema, 'properties': props}
+    if 'required' in esquema:
+        out['required'] = [k for k in esquema['required'] if k not in OCULTOS_AL_MODELO]
+    return out
 
 
 def _sin_titulos(esquema):

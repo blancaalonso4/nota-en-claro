@@ -144,10 +144,10 @@ def test_destinatario_solo_el_orientador():
 
 
 def test_enviar_exige_confirmacion():
-    assert not v('enviar_borrador', {'borrador_id': 'r123'}).ok
-    assert v('enviar_borrador', {'borrador_id': 'r123'}, confirmado_por_usuario=True).ok
+    assert not v('enviar_borrador', {'borrador_id': 'r123', 'destinatario': ORI}).ok
+    assert v('enviar_borrador', {'borrador_id': 'r123', 'destinatario': ORI}, confirmado_por_usuario=True).ok
     assert not v('enviar_borrador', {}, confirmado_por_usuario=True).ok
-    assert not v('enviar_borrador', {'borrador_id': 'r123'}, confirmado_por_usuario=True, orientador=None).ok
+    assert not v('enviar_borrador', {'borrador_id': 'r123', 'destinatario': ORI}, confirmado_por_usuario=True, orientador=None).ok
 
 
 def test_leer_correos_con_limite():
@@ -192,6 +192,48 @@ def test_borrador_con_marcadores_entre_corchetes_se_rechaza():
 
 
 def test_enviar_con_texto_editado_se_verifica():
-    assert v('enviar_borrador', {'borrador_id': 'r1', 'cuerpo': 'Hola, Marta.'}, confirmado_por_usuario=True).ok
+    assert v('enviar_borrador', {'borrador_id': 'r1', 'destinatario': ORI, 'cuerpo': 'Hola, Marta.'}, confirmado_por_usuario=True).ok
     for malo in ('', '   ', 'Hola [Tu nombre]', 'x' * 3001, None):
-        assert not v('enviar_borrador', {'borrador_id': 'r1', 'cuerpo': malo}, confirmado_por_usuario=True).ok, malo
+        assert not v('enviar_borrador', {'borrador_id': 'r1', 'destinatario': ORI, 'cuerpo': malo}, confirmado_por_usuario=True).ok, malo
+
+
+# --- el destinatario lo pone el estudiante, nunca el modelo (sesión 6) ---------------------------------------------------
+
+def test_el_modelo_no_puede_proponer_destinatario_ni_remitente():
+    assert not v('crear_borrador', {'asunto': 'a', 'cuerpo': 'b', 'destinatario': 'otro@ejemplo.com'}).ok
+    assert not v('leer_correos_orientador', {'max': 3, 'remitente': 'otro@ejemplo.com'}).ok
+
+
+def test_segunda_comprobacion_exige_exactamente_el_correo_del_estudiante():
+    base = {'asunto': 'a', 'cuerpo': 'b'}
+    assert v('crear_borrador', base | {'destinatario': ORI}, interno=True).ok
+    assert v('crear_borrador', base | {'destinatario': ' Orientador@Ejemplo.COM '}, interno=True).ok      # mayúsculas y espacios no cuentan
+    for malo in ('otro@ejemplo.com', ORI + '.falso.net', ORI + ',otro@ejemplo.com', 'x' + ORI, '', None, 5):
+        r = v('crear_borrador', base | {'destinatario': malo}, interno=True)
+        assert not r.ok, malo
+    assert not v('crear_borrador', base, interno=True).ok                                                 # sin destinatario
+    assert 'exactamente' in str(v('crear_borrador', base | {'destinatario': 'otro@ejemplo.com'}, interno=True))
+
+
+def test_sin_correo_del_orientador_no_hay_borrador():
+    for falta in (None, '', 'no-es-un-correo'):
+        r = v('crear_borrador', {'asunto': 'a', 'cuerpo': 'b'}, orientador=falta)
+        assert not r.ok and 'falta el correo del orientador' in str(r), falta
+
+
+def test_lectura_de_correos_solo_del_orientador_del_estudiante():
+    assert v('leer_correos_orientador', {'max': 3, 'remitente': ORI}, interno=True).ok
+    assert not v('leer_correos_orientador', {'max': 3, 'remitente': 'otro@ejemplo.com'}, interno=True).ok
+
+
+def test_envio_solo_al_correo_del_estudiante():
+    assert not v('enviar_borrador', {'borrador_id': 'r1', 'destinatario': 'otro@ejemplo.com'}, confirmado_por_usuario=True).ok
+    assert not v('enviar_borrador', {'borrador_id': 'r1'}, confirmado_por_usuario=True).ok
+
+
+def test_correo_valido():
+    from app.agentes.verificador import correo_valido
+    for ok in ('a@b.es', 'marta.gil+pau@instituto.madrid.es', ' a@b.es '):
+        assert correo_valido(ok), ok
+    for mal in ('', 'a@b', 'a b@c.es', 'a@b.es,c@d.es', 'a@b.es\nBcc: x@y.es', '<a@b.es>', 'Marta <a@b.es>', 'a@b.es;c@d.es', None, 3, 'a@' + 'b' * 120 + '.es'):
+        assert not correo_valido(mal), mal

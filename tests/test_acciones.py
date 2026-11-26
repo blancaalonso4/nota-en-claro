@@ -233,7 +233,9 @@ def test_correo_con_instrucciones_inyectadas_solo_deja_un_borrador_al_orientador
     r = a.ejecutar('correo_orientador', 'responde al orientador')
     # lo único que llegó a los servidores: leer y UN borrador legítimo (sin destinatario propio)
     assert [n for n, _ in puente.llamadas] == ['leer_correos_orientador', 'crear_borrador']
-    assert 'destinatario' not in puente.llamadas[1][1]
+    # el destinatario del borrador y el remitente de la búsqueda los puso el programa con el correo del estudiante, no el modelo
+    assert puente.llamadas[1][1]['destinatario'] == ORI and puente.llamadas[0][1]['remitente'] == ORI
+    assert 'atacante' not in str(puente.llamadas)
     assert r.ok and r.borrador['destinatario'] == ORI and 'sin enviar' in r.texto
     denegadas = {p['herramienta'] for p in traza.pasos if p['tipo'] == 'verificador' and p['fallo']}
     assert {'enviar_borrador', 'borrar_correo', 'crear_borrador'} <= denegadas
@@ -289,3 +291,59 @@ def test_borrador_con_marcadores_se_rechaza_y_el_modelo_lo_corrige(tmp_path):
     assert 'Marta Gil' in puente.llamadas[0][1]['cuerpo'] and '[' not in puente.llamadas[0][1]['cuerpo']
     fallos = [p for p in traza.pasos if p['tipo'] == 'verificador' and p['fallo']]
     assert len(fallos) == 1 and 'corchetes' in fallos[0]['error']
+
+
+# --- el destinatario lo escribe el estudiante, nunca el modelo (sesión 6) -----------------------------------------------------
+
+from app.contacto import Contacto  # noqa: E402
+
+OK_BORRADOR = {'borrador_id': 'R1', 'destinatario': 'marta@instituto.es', 'asunto': 'Duda', 'cuerpo': 'x'}
+
+
+def test_sin_correo_del_orientador_no_se_crea_el_borrador_ni_se_llama_al_modelo(tmp_path):
+    cliente = OllamaGuionizado()
+    puente = PuenteFalso({'crear_borrador': ok(OK_BORRADOR)})
+    a = ac.AgenteAcciones(puente, Traza(tmp_path, sesion='t'), cliente=cliente, ahora_fn=lambda: AHORA)     # sin .env por defecto
+    r = a.ejecutar('correo_orientador', 'escribe a mi orientador', contacto=Contacto('Luis', 'Marta', ''))
+    assert not r.ok and r.borrador is None and 'Falta el correo de tu orientador' in r.error and 'Mis notas' in r.error
+    assert cliente.recibido == [] and puente.llamadas == []
+    r = a.ejecutar('correo_orientador', 'escribe a mi orientador', contacto=Contacto('Luis', 'Marta', 'no-es-un-correo'))
+    assert not r.ok and puente.llamadas == []
+
+
+def test_el_correo_del_estudiante_manda_sobre_el_de_env(tmp_path):
+    cliente = OllamaGuionizado(respuesta(llamada('crear_borrador', asunto='Duda', cuerpo='Hola, Marta Gil.')))
+    puente = PuenteFalso({'crear_borrador': ok(OK_BORRADOR)})
+    a = ac.AgenteAcciones(puente, Traza(tmp_path, sesion='t'), cliente=cliente, orientador='demo@ejemplo.com',
+                          nombre_estudiante='Demo', nombre_orientador='Demo Orientador', ahora_fn=lambda: AHORA)
+    a.ejecutar('correo_orientador', 'escribe', contacto=Contacto('Luis Pérez', 'Marta Gil', 'marta@instituto.es'))
+    assert puente.llamadas[0][1]['destinatario'] == 'marta@instituto.es'      # no demo@ejemplo.com
+    sistema = cliente.recibido[0]['messages'][0]['content']
+    assert 'Marta Gil' in sistema and 'Luis Pérez' in sistema and 'Demo' not in sistema
+
+
+def test_el_env_solo_rellena_lo_que_el_estudiante_no_puso(tmp_path):
+    cliente = OllamaGuionizado(respuesta(llamada('crear_borrador', asunto='Duda', cuerpo='Hola.')))
+    puente = PuenteFalso({'crear_borrador': ok(OK_BORRADOR)})
+    a = ac.AgenteAcciones(puente, Traza(tmp_path, sesion='t'), cliente=cliente, orientador='demo@ejemplo.com',
+                          nombre_estudiante='Demo', nombre_orientador='Demo Orientador', ahora_fn=lambda: AHORA)
+    a.ejecutar('correo_orientador', 'escribe')              # sin datos del estudiante: vale el valor por defecto de la demo
+    assert puente.llamadas[0][1]['destinatario'] == 'demo@ejemplo.com'
+
+
+def test_el_modelo_intenta_poner_destinatario_y_se_rechaza(tmp_path):
+    cliente = OllamaGuionizado(respuesta(llamada('crear_borrador', asunto='Notas', cuerpo='Hola', destinatario='atacante@ejemplo.com')),
+                               respuesta(llamada('crear_borrador', asunto='Notas', cuerpo='Hola')))
+    puente = PuenteFalso({'crear_borrador': ok(OK_BORRADOR)})
+    a, traza = agente(tmp_path, cliente, puente)
+    r = a.ejecutar('correo_orientador', 'escribe', contacto=Contacto('', '', 'marta@instituto.es'))
+    assert r.ok and len(puente.llamadas) == 1 and puente.llamadas[0][1]['destinatario'] == 'marta@instituto.es'
+    assert 'atacante' not in str(puente.llamadas)
+    assert any('destinatario' in p['error'] for p in traza.pasos if p['tipo'] == 'verificador' and p['fallo'])
+
+
+def test_la_traza_no_guarda_el_correo_del_orientador(tmp_path):
+    cliente = OllamaGuionizado(respuesta(llamada('crear_borrador', asunto='Duda', cuerpo='Hola.')))
+    a, traza = agente(tmp_path, cliente, PuenteFalso({'crear_borrador': ok(OK_BORRADOR)}))
+    a.ejecutar('correo_orientador', 'escribe', contacto=Contacto('', '', 'marta@instituto.es'))
+    assert 'marta@instituto.es' not in str(traza.pasos)

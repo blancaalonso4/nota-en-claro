@@ -77,8 +77,9 @@ class AccionesFalso:
     def __init__(self):
         self.llamadas = []
 
-    def ejecutar(self, intencion, peticion, dias):
+    def ejecutar(self, intencion, peticion, dias, contacto=None):
         self.llamadas.append((intencion, dias))
+        self.contacto = contacto
         return NS(ok=True, texto='hecho', error='', borrador=None, eventos=[], informe=None)
 
 
@@ -170,3 +171,56 @@ def test_nota_con_datos_incompletos_no_inventa(tmp_path):
     o, _ = orq(tmp_path, 'nota_admision')
     r = eventos(o, notas_manuales={'nota_media_bachillerato': None, 'materias': []})[-1]['resultado']
     assert r['error'] and 'No invento' in r['texto']
+
+
+# --- datos de contacto del estudiante (sesión 6) ---------------------------------------------------------------------------
+
+HOJA_CON_CONTACTO = {'materias': [], 'nota_media_bachillerato': None, 'avisos': [], 'nombre_estudiante': 'Luis (hoja)',
+                     'nombre_orientador': 'Marta (hoja)', 'correo_orientador': 'hoja@instituto.es'}
+
+
+class PuenteHoja:
+    def __init__(self, datos=HOJA_CON_CONTACTO, ok=True):
+        self.datos, self.ok, self.llamadas = datos, ok, 0
+
+    def llamar(self, n, a=None):
+        self.llamadas += 1
+        return ResultadoLlamada(self.ok, datos=self.datos if self.ok else None, mensaje='' if self.ok else 'sin hoja')
+
+
+def test_correo_usa_los_datos_de_la_hoja(tmp_path):
+    ac, p = AccionesFalso(), PuenteHoja()
+    o, t = orq(tmp_path, 'correo_orientador', acciones=ac, puente=p)
+    eventos(o)
+    assert (ac.contacto.nombre_estudiante, ac.contacto.nombre_orientador, ac.contacto.correo_orientador) == ('Luis (hoja)', 'Marta (hoja)', 'hoja@instituto.es')
+    assert ('herramienta', 'leer_notas') in [(p_['tipo'], p_['herramienta']) for p_ in t.pasos if p_['tipo'] == 'herramienta']
+
+
+def test_los_campos_de_la_app_mandan_sobre_la_hoja_campo_a_campo(tmp_path):
+    ac = AccionesFalso()
+    o, _ = orq(tmp_path, 'correo_orientador', acciones=ac, puente=PuenteHoja())
+    eventos(o, contacto_manual={'correo_orientador': 'app@instituto.es', 'nombre_estudiante': '', 'nombre_orientador': ' '})
+    c = ac.contacto
+    assert (c.nombre_estudiante, c.nombre_orientador, c.correo_orientador) == ('Luis (hoja)', 'Marta (hoja)', 'app@instituto.es')
+
+
+def test_con_los_tres_campos_de_la_app_no_se_lee_la_hoja(tmp_path):
+    ac, p = AccionesFalso(), PuenteHoja()
+    o, _ = orq(tmp_path, 'correo_orientador', acciones=ac, puente=p)
+    eventos(o, contacto_manual={'nombre_estudiante': 'A', 'nombre_orientador': 'B', 'correo_orientador': 'b@instituto.es'})
+    assert p.llamadas == 0 and ac.contacto.correo_orientador == 'b@instituto.es'
+
+
+def test_si_la_hoja_falla_se_sigue_con_lo_que_haya(tmp_path):
+    ac = AccionesFalso()
+    o, t = orq(tmp_path, 'correo_orientador', acciones=ac, puente=PuenteHoja(ok=False))
+    r = eventos(o, contacto_manual={'correo_orientador': 'app@instituto.es'})[-1]['resultado']
+    assert not r['error'] and ac.contacto.correo_orientador == 'app@instituto.es'
+    assert any(p_.get('fallo') for p_ in t.pasos if p_['tipo'] == 'herramienta')
+
+
+def test_las_demas_acciones_no_leen_el_contacto(tmp_path):
+    ac, p = AccionesFalso(), PuenteHoja()
+    o, _ = orq(tmp_path, 'plan_estudio', acciones=ac, puente=p)
+    eventos(o)
+    assert p.llamadas == 0

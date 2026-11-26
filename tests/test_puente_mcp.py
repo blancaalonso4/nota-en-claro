@@ -97,3 +97,9 @@ def test_arranque_real_por_stdio_lista_las_nueve_herramientas():
         assert isinstance(r.ok, bool) and (r.ok or r.mensaje)
     finally:
         p.cerrar()
+
+
+def test_el_modelo_no_ve_destinatario_ni_remitente(puente):
+    hs = {h['function']['name']: h['function']['parameters'] for h in puente.herramientas(['crear_borrador', 'leer_correos_orientador'])}
+    assert set(hs['crear_borrador']['properties']) == {'asunto', 'cuerpo'} and set(hs['crear_borrador']['required']) == {'asunto', 'cuerpo'}
+    assert 'remitente' not in hs['leer_correos_orientador']['properties'] and 'remitente' not in hs['leer_correos_orientador'].get('required', [])

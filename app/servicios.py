@@ -4,13 +4,13 @@ Está separado de `interfaz.py` para poder sustituirlo por falsos en las pruebas
 """
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 
 from app.agentes.acciones import AgenteAcciones
 from app.agentes.coordinador import Coordinador, Orquestador
 from app.agentes.puente_mcp import PuenteMCP
 from app.agentes.traza import Traza
+from app import contacto as contacto_env
 from app.mcp_servers import comun
 from app.rag.config import ConfigRAG
 
@@ -31,30 +31,21 @@ def crear_recursos() -> Recursos:
     return Recursos(rag, PuenteMCP(), cfg)       # el puente arranca los servidores MCP al primer uso
 
 
-def orientador() -> str | None:
-    try:
-        return comun.orientador()
-    except comun.ErrorGoogle:
-        return None
-
-
-def nombres() -> tuple[str, str]:
-    """(estudiante, orientador) de .env, para el saludo y la firma del correo. Vacíos si no están rellenos."""
-    return os.environ.get('NOMBRE_ESTUDIANTE', '').strip(), os.environ.get('NOMBRE_ORIENTADOR', '').strip()
 
 
 def crear_orquestador(recursos: Recursos, traza: Traza) -> Orquestador:
     coord = Coordinador(traza, recursos.cfg)
-    estudiante, nombre_ori = nombres()
-    acciones = AgenteAcciones(recursos.puente, traza, recursos.cfg, orientador=orientador(), zona=comun.zona_horaria(),
-                              nombre_estudiante=estudiante, nombre_orientador=nombre_ori)
+    por_defecto = contacto_env.desde_env()      # solo el valor por defecto de la demo: los datos del estudiante mandan
+    acciones = AgenteAcciones(recursos.puente, traza, recursos.cfg, orientador=por_defecto.correo_orientador or None,
+                              zona=comun.zona_horaria(), nombre_estudiante=por_defecto.nombre_estudiante,
+                              nombre_orientador=por_defecto.nombre_orientador)
     return Orquestador(coord, traza, rag=recursos.rag, acciones=acciones, puente=recursos.puente)
 
 
 def estado_google() -> dict:
     """¿Está lista la parte de Google? Solo mira archivos y .env; no llama a Google."""
     tokens = {p: comun.ruta_token(p).exists() for p in comun.SCOPES}
-    ori = orientador()
+    ori = contacto_env.desde_env().correo_orientador or None     # solo informativo: ya no hace falta para que Google esté listo
     return {'credenciales': comun.CREDENCIALES.exists(), 'tokens': tokens, 'orientador': ori,
-            'lista': comun.CREDENCIALES.exists() and all(tokens.values()) and ori is not None,
-            'hoja_notas_id': comun.leer_estado().get('hoja_notas_id'), 'nombres': all(nombres())}
+            'lista': comun.CREDENCIALES.exists() and all(tokens.values()),
+            'hoja_notas_id': comun.leer_estado().get('hoja_notas_id')}

@@ -153,12 +153,13 @@ def test_hoja_con_configuracion_regional_espanola():
 def test_datos_resalta_las_casillas_y_dice_escribe_aqui():
     _, hojas = _hojas()
     filas = hojas['Datos']['data'][0]['rowData']
-    assert len(filas) == 2
+    assert len(filas) == 5
     for f in filas:
         casilla, aviso = f['values'][1], f['values'][2]
         assert casilla['userEnteredFormat']['backgroundColor'] == mcp_drive.AMARILLO and 'userEnteredValue' not in casilla
         assert aviso['userEnteredValue']['stringValue'] == '← escribe aquí'
-    assert hojas['Datos']['data'][0]['rowData'][0]['values'][0]['userEnteredValue']['stringValue'].startswith('Nota media')
+    etiquetas = [f['values'][0]['userEnteredValue']['stringValue'] for f in filas]
+    assert etiquetas[0].startswith('Nota media') and etiquetas[2:] == ['Tu nombre', 'Nombre de tu orientador', 'Correo de tu orientador']
 
 
 def test_instrucciones_explican_la_segunda_lengua():
@@ -174,3 +175,33 @@ def test_las_validaciones_usan_la_coma_decimal_de_es_ES():
     assert [v['userEnteredValue'] for v in pond['setDataValidation']['rule']['condition']['values']] == ['0', '0,2']
     assert 'tipo' not in str(reglas) and '.' not in ''.join(v['userEnteredValue'] for r in reglas
                                                            for v in r['setDataValidation']['rule']['condition']['values'])
+
+
+def test_parsear_hoja_lee_los_datos_de_contacto():
+    datos = [['Nota media de Bachillerato (0-10)', 8.5], ['Grado que quieres pedir', 'Medicina'], ['Tu nombre', ' Luis Pérez '],
+             ['Nombre de tu orientador', 'Marta Gil'], ['Correo de tu orientador', ' marta.gil@instituto.es ']]
+    h = mcp_drive.parsear_hoja(datos, [])
+    assert (h['nombre_estudiante'], h['nombre_orientador'], h['correo_orientador']) == ('Luis Pérez', 'Marta Gil', 'marta.gil@instituto.es')
+    assert h['nota_media_bachillerato'] == 8.5 and h['grado'] == 'Medicina' and h['avisos'] == []
+
+
+def test_parsear_hoja_correo_invalido_se_descarta_con_aviso():
+    for malo in ('marta', 'a@b.es, c@d.es', 'Marta <m@i.es>'):
+        h = mcp_drive.parsear_hoja([['Correo de tu orientador', malo]], [])
+        assert h['correo_orientador'] == '' and any('correo del orientador' in a for a in h['avisos']), malo
+
+
+def test_parsear_hoja_antigua_sin_filas_de_contacto():
+    h = mcp_drive.parsear_hoja([['Nota media de Bachillerato (0-10)', 7], ['Grado que quieres pedir', '']], [])
+    assert (h['nombre_estudiante'], h['nombre_orientador'], h['correo_orientador']) == ('', '', '') and h['avisos'] == []
+
+
+def test_leer_notas_devuelve_el_contacto_y_pide_las_cinco_filas_de_datos():
+    mcp, api, _ = servidor({'hoja_notas_id': 'H1'})
+    bg = api.sheets.spreadsheets.return_value.values.return_value.batchGet
+    bg.return_value.execute.return_value = {'valueRanges': [
+        {'values': [['Nota media de Bachillerato (0-10)', 8], ['Grado que quieres pedir', ''], ['Tu nombre', 'Luis'],
+                    ['Nombre de tu orientador', 'Marta'], ['Correo de tu orientador', 'marta@instituto.es']]}, {'values': []}]}
+    error, r = llamar_herramienta(mcp, 'leer_notas')
+    assert not error and r['correo_orientador'] == 'marta@instituto.es' and r['nombre_estudiante'] == 'Luis'
+    assert bg.call_args.kwargs['ranges'][0] == 'Datos!A1:B5'

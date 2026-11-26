@@ -12,3 +12,8 @@ data/indice/
 caso3_referencia/
 *.pdf
 .claude/
+# Sesión 4: trazas, estado de Google y caché de pytest. .env.example sí se sube (sin valores reales).
+logs/
+estado/
+.pytest_cache/
+!.env.example

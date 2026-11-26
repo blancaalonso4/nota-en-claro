@@ -6,3 +6,11 @@ sentence-transformers==5.7.0
 ollama==0.6.3
 streamlit==1.67.0
 pypdf==7.1.1
+# Sesión 4 (agentes y MCP). Medido: instalan sin errores en py -3.14; `pip check` sin conflictos.
+# mcp se fija por debajo de 2: en la 2.x FastMCP pasó a llamarse MCPServer y cambió el cliente (ver docs/decisiones.md).
+mcp==1.30.0
+google-api-python-client==2.202.0
+google-auth==2.63.1
+google-auth-oauthlib==1.5.0
+python-dotenv==1.2.4
+pytest==9.2.0

@@ -101,3 +101,9 @@ Todo **medido** en este portátil con `qwen3:4b-instruct` (scripts `eval/medir_p
 - README: apartado «¿Por qué no hay entrenamiento (train.py)?» (falta información, no estilo → RAG; la ingesta se hace al arrancar) y arranque simplificado; se corrige un `ollama pull` duplicado del README.
 - **Descartada:** mantener `streamlit run app/web/app.py` como arranque (no comprueba nada y exige dos pasos).
 
+
+## 2026-11-26 · Sesión 4 · `mcp` fijado en 1.30.0 (FastMCP), no 2.x
+- **Decisión:** `mcp==1.30.0` en `requirements.txt`. Los servidores usan `mcp.server.fastmcp.FastMCP` (stdio) y el cliente `mcp.client.stdio`.
+- **Por qué:** `pip install mcp` instaló la 2.3.0 (medido), donde `mcp.server.fastmcp` ya no existe: el import falla con un aviso de que FastMCP pasó a llamarse `MCPServer` y que otras APIs cambiaron. El enunciado pide FastMCP y la 1.x es la API que conocemos y documentamos.
+- **Descartada:** migrar a `MCPServer` de la 2.x (API sin probar en el equipo; no aporta nada que necesitemos). Si se migra, hay que tocar los tres servidores, el puente y los tests en memoria.
+- **Nota:** al volver a la 1.x quedaron restos de la 2.x (`mcp-types`, un directorio `~cp`); se desinstalaron. `pip check`: sin conflictos (medido).

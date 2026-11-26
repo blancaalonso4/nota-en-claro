@@ -1,0 +1,122 @@
+[
+ {
+  "peticion": "¿Cuántos días tengo para reclamar una nota de la PAU?",
+  "intencion": "normativa"
+ },
+ {
+  "peticion": "¿Puedo usar calculadora en el examen de Matemáticas?",
+  "intencion": "normativa"
+ },
+ {
+  "peticion": "¿Qué pasa si me pillan con el móvil durante la prueba?",
+  "intencion": "normativa"
+ },
+ {
+  "peticion": "¿Hasta qué fecha puedo matricularme en la PAU?",
+  "intencion": "normativa"
+ },
+ {
+  "peticion": "¿Qué documentos tengo que llevar el día del examen?",
+  "intencion": "normativa"
+ },
+ {
+  "peticion": "Calcula mi nota de admisión",
+  "intencion": "nota_admision"
+ },
+ {
+  "peticion": "¿Qué nota de acceso tengo con un 8,5 de bachillerato y un 7,8 en la PAU?",
+  "intencion": "nota_admision"
+ },
+ {
+  "peticion": "Quiero saber cuánto me sale la nota de admisión con mis ponderaciones",
+  "intencion": "nota_admision"
+ },
+ {
+  "peticion": "Hazme la cuenta de mi CAU y mi nota final para entrar a la universidad",
+  "intencion": "nota_admision"
+ },
+ {
+  "peticion": "¿Con mis notas llego a 12 de nota de admisión?",
+  "intencion": "nota_admision"
+ },
+ {
+  "peticion": "Hazme un plan de estudio para esta semana",
+  "intencion": "plan_estudio"
+ },
+ {
+  "peticion": "Organízame el estudio de los próximos 5 días en mi calendario",
+  "intencion": "plan_estudio"
+ },
+ {
+  "peticion": "Necesito un calendario de repaso para la PAU, prioriza lo que peor llevo",
+  "intencion": "plan_estudio"
+ },
+ {
+  "peticion": "Planifica mis tardes de estudio de la semana que viene",
+  "intencion": "plan_estudio"
+ },
+ {
+  "peticion": "Ponme sesiones de estudio en los huecos libres de mi agenda durante 10 días",
+  "intencion": "plan_estudio"
+ },
+ {
+  "peticion": "Guárdame un informe de mis notas en Drive",
+  "intencion": "informe"
+ },
+ {
+  "peticion": "Quiero un resumen de mis notas con mis asignaturas más flojas, guardado en un documento",
+  "intencion": "informe"
+ },
+ {
+  "peticion": "Genera un informe con mi situación académica",
+  "intencion": "informe"
+ },
+ {
+  "peticion": "Haz un informe de mis calificaciones y súbelo a mi Drive",
+  "intencion": "informe"
+ },
+ {
+  "peticion": "Prepárame un documento con mis puntos fuertes y débiles según mis notas",
+  "intencion": "informe"
+ },
+ {
+  "peticion": "Escribe un correo a mi orientador pidiéndole una reunión",
+  "intencion": "correo_orientador"
+ },
+ {
+  "peticion": "Contesta al último correo de mi orientadora diciendo que sí puedo ir",
+  "intencion": "correo_orientador"
+ },
+ {
+  "peticion": "Redáctale un mensaje al orientador preguntando por las ponderaciones de mi grado",
+  "intencion": "correo_orientador"
+ },
+ {
+  "peticion": "Prepara un email para mi orientador explicándole que no llegué a la tutoría",
+  "intencion": "correo_orientador"
+ },
+ {
+  "peticion": "Respóndele a mi orientador que prefiero quedar el jueves",
+  "intencion": "correo_orientador"
+ },
+ {
+  "peticion": "¿Quién ganó el último mundial de fútbol?",
+  "intencion": "fuera_de_ambito"
+ },
+ {
+  "peticion": "Cuéntame un chiste",
+  "intencion": "fuera_de_ambito"
+ },
+ {
+  "peticion": "Dame una receta de tortilla de patatas",
+  "intencion": "fuera_de_ambito"
+ },
+ {
+  "peticion": "Escríbeme un poema sobre el mar",
+  "intencion": "fuera_de_ambito"
+ },
+ {
+  "peticion": "¿Qué tiempo hará mañana en Madrid?",
+  "intencion": "fuera_de_ambito"
+ }
+]

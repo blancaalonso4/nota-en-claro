@@ -20,6 +20,7 @@ from app.rag.config import ConfigRAG
 from . import permisos
 from .permisos import Contexto, decidir, envolver_no_fiable, herramientas_de
 from .traza import Traza, resumen_argumentos
+from . import errores_modelo
 from .verificador import verificar
 
 MAX_VUELTAS = 4        # un plan completo son 2-3 vueltas (leer notas y huecos pueden ir juntos); la 4.ª deja corregir un error
@@ -122,7 +123,7 @@ class AgenteAcciones:
             except Exception as e:  # noqa: BLE001  (Ollama caído, modelo ausente...)
                 self.traza.registrar('modelo', 'acciones', segundos=time.perf_counter() - t0, fallo=True,
                                      error=f'{type(e).__name__}: {e}', vuelta=vuelta)
-                res.error = 'No he podido hablar con el modelo local. Comprueba que Ollama está abierto.'
+                res.error = errores_modelo.mensaje(e, self.cfg.modelo)
                 return res
             self.traza.registrar('modelo', 'acciones', tokens_entrada=getattr(r, 'prompt_eval_count', 0) or 0,
                                  tokens_salida=getattr(r, 'eval_count', 0) or 0, segundos=time.perf_counter() - t0,

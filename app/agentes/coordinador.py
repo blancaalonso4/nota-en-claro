@@ -18,6 +18,7 @@ import ollama
 
 from app.rag.config import ConfigRAG
 
+from . import errores_modelo
 from .nota_admision import calcular_desde_diccionario
 from .traza import Traza
 
@@ -75,7 +76,7 @@ class Coordinador:
         except Exception as e:  # noqa: BLE001
             self.traza.registrar('modelo', 'coordinador', segundos=time.perf_counter() - t0, fallo=True,
                                  error=f'{type(e).__name__}: {e}')
-            return Decision(None, error='No he podido hablar con el modelo local. Comprueba que Ollama está abierto.')
+            return Decision(None, error=errores_modelo.mensaje(e, self.cfg.modelo))
         base = dict(tokens_entrada=getattr(r, 'prompt_eval_count', 0) or 0, tokens_salida=getattr(r, 'eval_count', 0) or 0,
                     segundos=time.perf_counter() - t0)
         crudo = (r.message.content or '').strip()

@@ -4,6 +4,8 @@ import pandas as pd
 FILAS_NOTAS = 8
 FASES = ['acceso', 'admisión']
 PONDERACIONES = ['0', '0,1', '0,2']
+# Anchos en píxeles de las columnas del editor: suman 590 y caben con la barra lateral abierta (~620 con el margen del editor); «Ponderación» se lee entera con su cabecera
+ANCHOS_TABLA = {'Asignatura': 160, 'Nota': 70, 'Fase': 100, 'Ponderación': 125, 'Segunda lengua': 135}
 
 
 def tabla_vacia() -> pd.DataFrame:

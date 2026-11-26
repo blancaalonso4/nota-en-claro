@@ -16,7 +16,7 @@ import streamlit as st  # noqa: E402
 from app import servicios  # noqa: E402
 from app.agentes.traza import Traza  # noqa: E402
 from app.agentes.verificador import marcadores  # noqa: E402
-from app.tabla_notas import FASES, PONDERACIONES, tabla_a_notas, tabla_vacia  # noqa: E402
+from app.tabla_notas import ANCHOS_TABLA, FASES, PONDERACIONES, tabla_a_notas, tabla_vacia  # noqa: E402
 
 
 
@@ -47,11 +47,11 @@ def formulario_notas():
         tabla = st.data_editor(
             tabla_vacia(), key='editor_notas', num_rows='dynamic', hide_index=True, width='stretch',
             column_config={
-                'Asignatura': st.column_config.TextColumn('Asignatura', help='Por ejemplo: Matemáticas II', width='large'),
-                'Nota': st.column_config.NumberColumn('Nota', min_value=0.0, max_value=10.0, step=0.01, format='%.2f'),
-                'Fase': st.column_config.SelectboxColumn('Fase', options=FASES),
-                'Ponderación': st.column_config.SelectboxColumn('Ponderación', options=PONDERACIONES),
-                'Segunda lengua': st.column_config.CheckboxColumn('Segunda lengua', help='Marca la segunda lengua extranjera'),
+                'Asignatura': st.column_config.TextColumn('Asignatura', help='Por ejemplo: Matemáticas II', width=ANCHOS_TABLA['Asignatura']),
+                'Nota': st.column_config.NumberColumn('Nota', min_value=0.0, max_value=10.0, step=0.01, format='%.2f', width=ANCHOS_TABLA['Nota']),
+                'Fase': st.column_config.SelectboxColumn('Fase', options=FASES, width=ANCHOS_TABLA['Fase']),
+                'Ponderación': st.column_config.SelectboxColumn('Ponderación', options=PONDERACIONES, width=ANCHOS_TABLA['Ponderación']),
+                'Segunda lengua': st.column_config.CheckboxColumn('Segunda lengua', help='Marca la segunda lengua extranjera', width=ANCHOS_TABLA['Segunda lengua']),
             })
         enviado = st.form_submit_button('Usar estas notas')
     if enviado:

@@ -193,3 +193,14 @@ def test_crear_hoja_de_notas(app):
     next(b for b in at.sidebar.button if b.label == 'Crear mi hoja de notas').click().run()
     assert any('Hoja creada' in s.value and 'docs.google.com/spreadsheets/d/H1' in s.value for s in at.sidebar.success)
     assert any('Ábrela con la cuenta de Google conectada, rellénala y luego pídeme «calcula mi nota de admisión»' in m.value for m in at.sidebar.markdown)
+
+
+def test_la_columna_ponderacion_tiene_ancho_suficiente_y_la_tabla_cabe(app, monkeypatch):
+    from app.tabla_notas import ANCHOS_TABLA
+    sin_google(monkeypatch)
+    at = app('nota_admision')
+    config = json.loads(at.dataframe[0].proto.columns)
+    anchos = {k: v.get('width') for k, v in config.items() if k in ANCHOS_TABLA}
+    assert anchos['Ponderación'] >= 120                       # «Ponderación» (11 letras) y su desplegable se ven enteros
+    assert anchos == {k: ANCHOS_TABLA[k] for k in anchos} and len(anchos) == 5
+    assert sum(ANCHOS_TABLA.values()) <= 620                  # con el margen del editor cabe en la columna central de Streamlit con la barra lateral abierta

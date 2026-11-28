@@ -83,20 +83,22 @@ def test_plan_de_estudio_completo_en_dos_vueltas(tmp_path):
     puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
     a, traza = agente(tmp_path, cliente, puente)
     r = a.ejecutar('plan_estudio', 'Hazme un plan de estudio para esta semana', dias=7)
-    assert r.ok and r.vueltas == 2 and len(r.eventos) == 1
-    assert 'He creado 1 sesiones' in r.texto and 'miércoles 2 dic 16:00–17:30 · Estudio: Física' in r.texto
+    # el agente PROPONE: el plan queda en `plan_propuesto` y no se ha escrito nada en el calendario
+    assert r.ok and r.vueltas == 2 and len(r.plan_propuesto) == 1 and r.eventos == []
+    assert 'Te propongo 1 sesiones' in r.texto and 'miércoles 2 dic 16:00–17:30 · Estudio: Física' in r.texto
+    assert [n for n, _ in puente.llamadas] == ['leer_notas', 'huecos_libres'] and r.dias == 7 and r.huecos == HUECOS['huecos']
     # el modelo ve las notas como datos delimitados y los huecos numerados, sin fechas ISO
     herramientas_vuelta2 = {m['tool_name']: m['content'] for m in cliente.recibido[1]['messages'] if m['role'] == 'tool'}
     assert herramientas_vuelta2['leer_notas'].startswith('<datos_no_fiables fuente="drive">')
     assert '1: miércoles 2 dic, 16:00-20:00 (240 min)' in herramientas_vuelta2['huecos_libres']
     assert '2026-12-02' not in herramientas_vuelta2['huecos_libres']
-    # al servidor llegan las fechas calculadas por Python
-    assert puente.llamadas[-1] == ('crear_eventos_estudio', {'eventos': [
-        {'titulo': 'Estudio: Física', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:30:00+01:00'}]})
-    # traza: 2 llamadas al modelo con sus tokens, 3 herramientas con permiso
+    # la propuesta lleva las fechas calculadas por Python
+    assert r.plan_propuesto == [
+        {'titulo': 'Estudio: Física', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:30:00+01:00'}]
+    # traza: 2 llamadas al modelo con sus tokens, 2 herramientas con permiso (escribir lo hace después Python)
     assert [p['tokens_entrada'] for p in traza.pasos if p['tipo'] == 'modelo'] == [300, 300]
     assert [(p['herramienta'], p['permiso']) for p in traza.pasos if p['tipo'] == 'herramienta'] == [
-        ('leer_notas', 'automatico'), ('huecos_libres', 'automatico'), ('crear_eventos_estudio', 'automatico')]
+        ('leer_notas', 'automatico'), ('huecos_libres', 'automatico')]
     # opciones reproducibles en cada llamada; el modelo ve planificar_sesiones y NO crear_eventos_estudio
     for rec in cliente.recibido:
         assert rec['options']['seed'] == 42 and rec['options']['temperature'] == 0 and rec['options']['num_predict'] == 600
@@ -112,8 +114,8 @@ def test_varias_sesiones_en_el_mismo_hueco_van_una_detras_de_otra(tmp_path):
     puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
     a, _ = agente(tmp_path, cliente, puente)
     r = a.ejecutar('plan_estudio', 'plan')
-    assert r.ok
-    assert [(e['titulo'], e['inicio'][11:16], e['fin'][11:16]) for e in r.eventos] == [
+    assert r.ok and r.eventos == []
+    assert [(e['titulo'], e['inicio'][11:16], e['fin'][11:16]) for e in r.plan_propuesto] == [
         ('Estudio: Física', '16:00', '17:30'), ('Estudio: Historia', '17:30', '18:30'), ('Estudio: Física', '10:00', '12:00')]
 
 
@@ -125,8 +127,8 @@ def test_sesion_que_no_cabe_se_devuelve_al_modelo_con_el_espacio_que_queda(tmp_p
     puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
     a, traza = agente(tmp_path, cliente, puente)
     r = a.ejecutar('plan_estudio', 'plan')
-    assert r.ok and r.vueltas == 3
-    assert [n for n, _ in puente.llamadas].count('crear_eventos_estudio') == 1    # la mala no llegó al servidor
+    assert r.ok and r.vueltas == 3 and len(r.plan_propuesto) == 1
+    assert not {'crear_eventos_estudio', 'aplicar_plan_estudio'} & {n for n, _ in puente.llamadas}    # el agente no escribe
     fallos = [p for p in traza.pasos if p['tipo'] == 'verificador' and p['fallo']]
     assert len(fallos) == 1 and 'quedan 60 min' in fallos[0]['error']
     assert any('quedan 60 min' in m['content'] for m in cliente.recibido[2]['messages'] if m['role'] == 'tool')
@@ -347,3 +349,24 @@ def test_la_traza_no_guarda_el_correo_del_orientador(tmp_path):
     a, traza = agente(tmp_path, cliente, PuenteFalso({'crear_borrador': ok(OK_BORRADOR)}))
     a.ejecutar('correo_orientador', 'escribe', contacto=Contacto('', '', 'marta@instituto.es'))
     assert 'marta@instituto.es' not in str(traza.pasos)
+
+
+def test_el_agente_propone_y_no_escribe_en_el_calendario(tmp_path):
+    cliente = OllamaGuionizado(respuesta(llamada('leer_notas'), llamada('huecos_libres', desde='2026-12-01', hasta='2026-12-08')),
+                               respuesta(llamada('planificar_sesiones', sesiones=[SESION])))
+    puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS), 'crear_eventos_estudio': creados})
+    a, traza = agente(tmp_path, cliente, puente)
+    r = a.ejecutar('plan_estudio', 'plan', dias=5)
+    assert len(r.plan_propuesto) == 1 and r.eventos == [] and r.dias == 5 and r.huecos == HUECOS['huecos']
+    assert [n for n, _ in puente.llamadas] == ['leer_notas', 'huecos_libres']          # ninguna herramienta de escritura
+    assert any(p['tipo'] == 'verificador' and not p['fallo'] and p['herramienta'] == 'planificar_sesiones' for p in traza.pasos)
+
+
+def test_el_modelo_no_puede_llamar_a_aplicar_plan_estudio(tmp_path):
+    directo = {'titulo': 'x', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:00:00+01:00'}
+    cliente = OllamaGuionizado(respuesta(llamada('leer_notas'), llamada('huecos_libres', desde='2026-12-01', hasta='2026-12-08')),
+                               respuesta(llamada('aplicar_plan_estudio', eventos=[directo], confirmado=True)), respuesta(texto='vale'))
+    puente = PuenteFalso({'leer_notas': ok(NOTAS), 'huecos_libres': ok(HUECOS)})
+    a, _ = agente(tmp_path, cliente, puente)
+    r = a.ejecutar('plan_estudio', 'plan')
+    assert r.plan_propuesto == [] and 'aplicar_plan_estudio' not in [n for n, _ in puente.llamadas]

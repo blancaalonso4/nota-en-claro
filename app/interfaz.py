@@ -2,6 +2,7 @@
 
 - Chat con streaming para la normativa; para las acciones, un aviso de espera.
 - Correo al orientador: se muestra el borrador y solo «Enviar» (confirmación explícita) lo manda.
+- Plan de estudio: si ya hay sesiones en el calendario, solo «Sustituir mi plan» (confirmación explícita) las borra.
 - Notas: se pueden leer de la hoja «Mis notas» de Drive o introducir a mano (funciona sin Google).
 - Panel «Traza de la sesión» con cada paso: agente, herramienta, permiso, tokens, segundos y fallos.
 """
@@ -14,8 +15,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import streamlit as st  # noqa: E402
 
 from app import servicios  # noqa: E402
+from app.agentes import plan, plan_calendario  # noqa: E402
 from app.agentes.traza import Traza  # noqa: E402
 from app.agentes.verificador import correo_valido, marcadores  # noqa: E402
+from app.mcp_servers import comun  # noqa: E402
 from app.tabla_notas import ANCHOS_TABLA, FASES, PONDERACIONES, tabla_a_notas, tabla_vacia  # noqa: E402
 
 
@@ -34,6 +37,7 @@ def iniciar_sesion():
         ss.traza = Traza()
         ss.mensajes = []          # [(rol, texto)]
         ss.borrador = None        # borrador pendiente de confirmar
+        ss.plan_pendiente = None  # plan propuesto que sustituiría al que ya hay en el calendario (espera confirmación)
         ss.notas_manuales = None
         ss.contacto_manual = None   # nombre del estudiante, del orientador y correo del orientador (alternativa a la hoja de Drive)
 
@@ -156,6 +160,28 @@ def tarjeta_borrador(recursos):
             st.rerun()
 
 
+def tarjeta_plan(recursos):
+    """Plan nuevo pendiente: solo el botón «Sustituir mi plan» (confirmación explícita) borra el plan anterior."""
+    ss, p = st.session_state, st.session_state.plan_pendiente
+    if not p:
+        return
+    with st.container(border=True):
+        st.subheader('Plan de estudio pendiente (aún NO aplicado)')
+        st.markdown(plan_calendario.PREGUNTA_SUSTITUIR.format(n=p['existentes']))
+        st.markdown('Plan propuesto:\n' + plan.lineas_eventos(p['eventos']))
+        c1, c2 = st.columns(2)
+        if c1.button('Sustituir mi plan', type='primary'):
+            ap = plan_calendario.aplicar(recursos.puente, ss.traza, p['eventos'], confirmado=True, zona=comun.zona_horaria(),
+                                         huecos=p.get('huecos'), dias=p.get('dias', 7), agente='interfaz')
+            ss.mensajes.append(('assistant', ap.texto))
+            ss.plan_pendiente = None
+            st.rerun()
+        if c2.button('Cancelar'):
+            ss.mensajes.append(('assistant', plan_calendario.cancelar(ss.traza)))
+            ss.plan_pendiente = None
+            st.rerun()
+
+
 def panel_traza():
     t = st.session_state.traza
     with st.expander('Traza de la sesión'):
@@ -186,6 +212,8 @@ def atender(recursos, peticion: str):
         st.caption(f"Tipo de petición: {resultado['intencion']}")
     if resultado.get('borrador'):
         ss.borrador = resultado['borrador']
+    if resultado.get('intencion') == 'plan_estudio':
+        ss.plan_pendiente = resultado.get('plan_pendiente')      # pedir otro plan reemplaza la propuesta pendiente
     ss.mensajes.append(('assistant', resultado['texto']))
     return resultado
 
@@ -210,6 +238,7 @@ def main():
         with st.chat_message('assistant'):
             atender(recursos, peticion)
     tarjeta_borrador(recursos)
+    tarjeta_plan(recursos)
     panel_traza()
 
 

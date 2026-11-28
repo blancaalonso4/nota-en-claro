@@ -1,6 +1,6 @@
 """Permisos por herramienta y defensa contra inyección de prompt. Python puro, sin modelo.
 
-Permisos: automático (leer, crear borrador), confirmar (enviar correo; solo desde la interfaz, nunca ofrecida al
+Permisos: automático (leer, crear borrador), confirmar (enviar correo y sustituir el plan de estudio; solo desde la interfaz, nunca ofrecida al
 modelo) y prohibido (borrar y cualquier herramienta que no esté en la tabla).
 """
 from __future__ import annotations
@@ -16,9 +16,11 @@ PERMISOS: dict[str, str] = {
     'planificar_sesiones': AUTOMATICO,   # herramienta del agente (no es de un servidor): Python calcula las fechas y crea los eventos
     'leer_correos_orientador': AUTOMATICO, 'crear_borrador': AUTOMATICO,
     'enviar_borrador': CONFIRMAR,
+    # sustituye el plan de estudio (borra los eventos del calendario de la app): solo por el puente, tras la confirmación
+    'aplicar_plan_estudio': CONFIRMAR,
 }
 
-# Herramientas que el modelo recibe en cada intención. enviar_borrador no está en ninguna: es un botón de la interfaz.
+# Herramientas que el modelo recibe en cada intención. enviar_borrador y aplicar_plan_estudio no están en ninguna: las llama Python (botón de la interfaz u orquestador).
 HERRAMIENTAS_POR_INTENCION: dict[str, tuple[str, ...]] = {
     'plan_estudio': ('leer_notas', 'huecos_libres', 'planificar_sesiones'),   # crear_eventos_estudio lo llama Python, no el modelo
     'informe': ('leer_notas', 'guardar_informe'),

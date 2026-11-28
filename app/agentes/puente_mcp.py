@@ -4,6 +4,7 @@ Un hilo con su propio bucle de eventos mantiene abiertas las sesiones con los se
 - `herramientas(nombres)`: esquemas en el formato de herramientas de Ollama (cortos, para ahorrar tokens).
 - `llamar(nombre, args)`: llamada de una herramienta AUTOMÁTICA (el modelo nunca llega a las de confirmar/prohibidas).
 - `enviar_correo_confirmado(borrador_id, orientador)`: la única vía para enviar, desde el botón de la interfaz.
+- `aplicar_plan(eventos, ...)`: la única vía para sustituir el plan de estudio (borra los eventos del calendario de la app).
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ SERVIDORES = {'drive': 'app.mcp_servers.mcp_drive', 'calendar': 'app.mcp_servers
               'gmail': 'app.mcp_servers.mcp_gmail'}
 PLATAFORMA_DE = {'crear_plantilla_notas': 'drive', 'leer_notas': 'drive', 'guardar_informe': 'drive',
                  'listar_eventos': 'calendar', 'huecos_libres': 'calendar', 'crear_eventos_estudio': 'calendar',
+                 'aplicar_plan_estudio': 'calendar',
                  'leer_correos_orientador': 'gmail', 'crear_borrador': 'gmail', 'enviar_borrador': 'gmail'}
 TIEMPO_MAXIMO_S = 90
 
@@ -147,6 +149,17 @@ class PuenteMCP:
         if not v.ok:
             return ResultadoLlamada(False, mensaje=str(v))
         return self._llamar('enviar_borrador', args | {'confirmado': True})
+
+    def aplicar_plan(self, eventos: list[dict], *, huecos: list | None, dias: int, zona: str, franja=None,
+                     confirmado: bool = False, ahora=None) -> ResultadoLlamada:
+        """Sustituye el plan de estudio. Solo se llega aquí desde Python (orquestador o botón de la interfaz): el modelo no
+        recibe esta herramienta y `llamar` la rechaza. Verifica la propuesta con la hora actual (si ya ha empezado, se
+        rechaza) y el servidor no borra nada sin `confirmado=True` cuando ya hay eventos. `franja` se usará en la fase 1B."""
+        args = {'eventos': eventos}
+        v = verificar('aplicar_plan_estudio', args, ahora=ahora, zona=zona, huecos=huecos, dias=dias)
+        if not v.ok:
+            return ResultadoLlamada(False, mensaje=f'La propuesta ya no es válida: {v}. Pídeme el plan otra vez.')
+        return self._llamar('aplicar_plan_estudio', args | {'confirmado': confirmado})
 
     def _llamar(self, nombre: str, args: dict) -> ResultadoLlamada:
         self.iniciar()

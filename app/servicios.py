@@ -39,7 +39,7 @@ def crear_orquestador(recursos: Recursos, traza: Traza) -> Orquestador:
     acciones = AgenteAcciones(recursos.puente, traza, recursos.cfg, orientador=por_defecto.correo_orientador or None,
                               zona=comun.zona_horaria(), nombre_estudiante=por_defecto.nombre_estudiante,
                               nombre_orientador=por_defecto.nombre_orientador)
-    return Orquestador(coord, traza, rag=recursos.rag, acciones=acciones, puente=recursos.puente)
+    return Orquestador(coord, traza, rag=recursos.rag, acciones=acciones, puente=recursos.puente, zona=comun.zona_horaria())
 
 
 def estado_google() -> dict:

@@ -3,6 +3,7 @@ import json
 from types import SimpleNamespace as NS
 
 from app.agentes import coordinador as co
+from app.agentes.plan_calendario import PREGUNTA_SUSTITUIR
 from app.agentes.puente_mcp import ResultadoLlamada
 from app.agentes.traza import Traza
 from app.rag.config import ConfigRAG
@@ -224,3 +225,52 @@ def test_las_demas_acciones_no_leen_el_contacto(tmp_path):
     o, _ = orq(tmp_path, 'plan_estudio', acciones=ac, puente=p)
     eventos(o)
     assert p.llamadas == 0
+
+
+# --- sustitución del plan de estudio -----------------------------------------------------------------------------------------
+
+class AccionesPlan:
+    """El agente de acciones que solo propone: devuelve `plan_propuesto` y no ha escrito nada."""
+
+    def ejecutar(self, intencion, peticion, dias, contacto=None):
+        propuesta = [{'titulo': 'Estudio: Física', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:30:00+01:00'}]
+        return NS(ok=True, texto='Te propongo 1 sesiones:\n- miércoles 2 dic 16:00–17:30 · Estudio: Física', error='', borrador=None,
+                  eventos=[], informe=None, plan_propuesto=propuesta, huecos=[{'id': 1}], dias=7)
+
+
+class PuentePlan:
+    def __init__(self, existentes):
+        self.existentes, self.llamadas = existentes, []
+
+    def aplicar_plan(self, eventos, *, huecos, dias, zona, franja=None, confirmado=False, ahora=None):
+        self.llamadas.append((len(eventos), confirmado, huecos, dias, zona))
+        if self.existentes and not confirmado:
+            return ResultadoLlamada(True, datos={'aplicado': False, 'existentes': self.existentes})
+        return ResultadoLlamada(True, datos={'aplicado': True, 'creados': [dict(e) for e in eventos], 'existentes': 0,
+                                             'borrados': 0, 'no_borrados': 0, 'calendario_id': 'CAL'})
+
+
+def test_plan_sin_eventos_previos_se_crea_sin_preguntar(tmp_path):
+    p = PuentePlan(existentes=0)
+    o, t = orq(tmp_path, 'plan_estudio', acciones=AccionesPlan(), puente=p)
+    r = eventos(o)[-1]['resultado']
+    assert not r['error'] and 'plan_pendiente' not in r and r['texto'].startswith('He creado 1 sesiones')
+    assert p.llamadas == [(1, False, [{'id': 1}], 7, 'Europe/Madrid')]
+
+
+def test_plan_con_eventos_previos_queda_pendiente_con_la_pregunta(tmp_path):
+    p = PuentePlan(existentes=6)
+    o, t = orq(tmp_path, 'plan_estudio', acciones=AccionesPlan(), puente=p)
+    r = eventos(o)[-1]['resultado']
+    assert r['texto'].startswith('Te propongo 1 sesiones:') and r['texto'].endswith(PREGUNTA_SUSTITUIR.format(n=6))
+    assert r['plan_pendiente']['existentes'] == 6 and len(r['plan_pendiente']['eventos']) == 1
+    assert r['plan_pendiente']['huecos'] == [{'id': 1}] and r['plan_pendiente']['dias'] == 7
+    assert p.llamadas == [(1, False, [{'id': 1}], 7, 'Europe/Madrid')]            # una sola llamada y sin confirmar: no se borra nada
+    paso = [x for x in t.pasos if x['herramienta'] == 'aplicar_plan_estudio'][0]
+    assert paso['agente'] == 'orquestador' and paso['permiso'] == 'confirmar' and paso['existentes'] == 6
+
+
+def test_los_falsos_sin_plan_propuesto_siguen_funcionando(tmp_path):
+    o, _ = orq(tmp_path, 'plan_estudio', puente=PuentePlan(existentes=3))       # AccionesFalso no tiene plan_propuesto
+    r = eventos(o)[-1]['resultado']
+    assert r['texto'] == 'hecho' and 'plan_pendiente' not in r

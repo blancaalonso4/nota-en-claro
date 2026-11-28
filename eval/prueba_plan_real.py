@@ -2,8 +2,8 @@
 
     python eval/prueba_plan_real.py
 
-Crea de verdad las sesiones en el calendario «Nota en Claro · Estudio» (es el calendario propio de la app; el principal
-solo se consulta como ocupado/libre). Hay que haber autorizado antes (`python -m app.mcp_servers.autorizar`) y tener
+Crea de verdad las sesiones en el calendario «Nota en Claro · Estudio» y BORRA las que hubiera (es el calendario propio de
+la app; el principal solo se consulta como ocupado/libre). El agente solo propone; `plan_calendario.aplicar` lo escribe. Hay que haber autorizado antes (`python -m app.mcp_servers.autorizar`) y tener
 rellena la hoja «Mis notas». Todo MEDIDO: segundos (reloj), tokens (los reporta Ollama), vueltas (llamadas al modelo).
 No se guardan las notas: solo recuentos y las sesiones creadas.
 """
@@ -20,6 +20,7 @@ if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
 from app.agentes.acciones import AgenteAcciones  # noqa: E402
+from app.agentes import plan_calendario  # noqa: E402
 from app.agentes.puente_mcp import PuenteMCP  # noqa: E402
 from app.agentes.traza import Traza  # noqa: E402
 from app.mcp_servers import comun  # noqa: E402
@@ -41,11 +42,17 @@ def main() -> int:
                             zona=comun.zona_horaria())
     try:
         res = agente.ejecutar('plan_estudio', 'Hazme un plan de estudio para esta semana', dias=7)
+        ap = None
+        if res.ok and res.plan_propuesto:
+            ap = plan_calendario.aplicar(puente, traza, res.plan_propuesto, confirmado=True, zona=comun.zona_horaria(),
+                                         huecos=res.huecos, dias=res.dias, agente='orquestador')
+            res.texto = ap.texto
     finally:
         puente.cerrar()
     modelo = [p for p in traza.pasos if p['tipo'] == 'modelo']
     rechazos = [(p['herramienta'], p['error'][:160]) for p in traza.pasos if p['tipo'] == 'verificador' and p['fallo']]
-    out = {'ok': res.ok, 'vueltas': res.vueltas, 'eventos': len(res.eventos), 'error': res.error, 'rechazos_verificador': rechazos,
+    out = {'ok': res.ok, 'vueltas': res.vueltas, 'eventos': len(res.plan_propuesto), 'borrados': ap.borrados if ap else None,
+           'no_borrados': ap.no_borrados if ap else None, 'error': res.error or (ap.texto if ap and not ap.ok else ''), 'rechazos_verificador': rechazos,
            'tokens_entrada': [p['tokens_entrada'] for p in modelo], 'tokens_salida': [p['tokens_salida'] for p in modelo],
            'segundos_total': traza.totales()['segundos'], 'texto': res.texto}
     print(json.dumps(out, ensure_ascii=False, indent=1))
@@ -54,11 +61,11 @@ def main() -> int:
         f'# Prueba real del plan de estudio ({datetime.now():%Y-%m-%d %H:%M})\n\n'
         f'Modelo `{cfg.modelo}`, seed {cfg.semilla}, temperature {cfg.temperature}, num_predict 600, think False. {platform.platform()}, CPU sin GPU. '
         'Calendario y hoja de notas REALES de la cuenta demo. Cifras **medidas** (reloj, tokens de Ollama, vueltas = llamadas al modelo).\n\n'
-        f"- Resultado: {'OK' if res.ok else 'FALLO'} · vueltas {res.vueltas} · eventos creados {len(res.eventos)} · {out['segundos_total']} s\n"
+        f"- Resultado: {'OK' if res.ok else 'FALLO'} · vueltas {res.vueltas} · eventos propuestos {len(res.plan_propuesto)} · borrados {out['borrados']} · no borrados {out['no_borrados']} · {out['segundos_total']} s\n"
         f"- Tokens de entrada por vuelta: {out['tokens_entrada']} · de salida: {out['tokens_salida']}\n"
         f'- Rechazos del verificador: {rechazos or "ninguno"}\n'
         + (f'- Error: {res.error}\n' if res.error else '') + f'\n```\n{res.texto}\n```\n', encoding='utf-8')
-    return 0 if res.ok and res.eventos else 1
+    return 0 if res.ok and res.plan_propuesto and ap and ap.ok else 1
 
 
 if __name__ == '__main__':

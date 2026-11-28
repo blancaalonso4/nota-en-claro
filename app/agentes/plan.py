@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 DURACIONES = (60, 90, 120)
 MAX_SESIONES = 6
 PREFIJO_TITULO = 'Estudio: '
+DIAS_ES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
+MESES_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 ESQUEMA_PLANIFICAR = {
     'type': 'function',
@@ -28,6 +30,15 @@ ESQUEMA_PLANIFICAR = {
                                'minutos': {'type': 'integer', 'enum': list(DURACIONES)}},
                 'required': ['hueco', 'asignatura', 'minutos']}}},
             'required': ['sesiones']}}}
+
+
+def lineas_eventos(eventos: list[dict]) -> str:
+    """Una línea por sesión: «- miércoles 2 dic 16:00–17:30 · Estudio: Física»."""
+    lineas = []
+    for e in eventos:
+        a, b = datetime.fromisoformat(e['inicio']), datetime.fromisoformat(e['fin'])
+        lineas.append(f"- {DIAS_ES[a.weekday()]} {a.day} {MESES_ES[a.month - 1]} {a:%H:%M}–{b:%H:%M} · {e['titulo']}")
+    return '\n'.join(lineas)
 
 
 def _norm(t: str) -> str:

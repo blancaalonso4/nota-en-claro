@@ -1,6 +1,8 @@
 """Puente MCP: sesiones en memoria con servidores falsos, y un arranque real por stdio (sin llamar a Google)."""
 import json
+from datetime import datetime
 from unittest.mock import MagicMock
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -85,14 +87,14 @@ def test_enviar_confirmado_con_texto_editado_envia_ese_texto(puente):
     assert not r.ok and 'corchetes' in r.mensaje and dr.send.call_count == 1
 
 
-def test_arranque_real_por_stdio_lista_las_nueve_herramientas():
+def test_arranque_real_por_stdio_lista_las_diez_herramientas():
     """Lanza los tres servidores como subprocesos (como en la app). No llama a Google."""
     p = PuenteMCP()
     try:
         p.iniciar()
         assert set(p._esquemas) == {'crear_plantilla_notas', 'leer_notas', 'guardar_informe', 'listar_eventos',
                                     'huecos_libres', 'crear_eventos_estudio', 'leer_correos_orientador',
-                                    'crear_borrador', 'enviar_borrador'}
+                                    'crear_borrador', 'enviar_borrador', 'aplicar_plan_estudio'}
         r = p.llamar('leer_notas')       # sin hoja en estado (o sin token): mensaje claro, no excepción
         assert isinstance(r.ok, bool) and (r.ok or r.mensaje)
     finally:
@@ -103,3 +105,51 @@ def test_el_modelo_no_ve_destinatario_ni_remitente(puente):
     hs = {h['function']['name']: h['function']['parameters'] for h in puente.herramientas(['crear_borrador', 'leer_correos_orientador'])}
     assert set(hs['crear_borrador']['properties']) == {'asunto', 'cuerpo'} and set(hs['crear_borrador']['required']) == {'asunto', 'cuerpo'}
     assert 'remitente' not in hs['leer_correos_orientador']['properties'] and 'remitente' not in hs['leer_correos_orientador'].get('required', [])
+
+
+# --- aplicar_plan_estudio: solo por el método propio del puente --------------------------------------------------------------
+
+PROPUESTA = [{'titulo': 'Estudio: Física', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:30:00+01:00'}]
+HUECOS_PLAN = [{'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T20:00:00+01:00'}]
+AHORA_PLAN = datetime(2026, 12, 1, 9, 0, tzinfo=ZoneInfo('Europe/Madrid'))
+
+
+def calendario_con(puente, existentes):
+    ev = puente.apis['calendar'].cal.events.return_value
+    ev.list.return_value.execute.return_value = {'items': [{'id': i} for i in existentes]}
+    ev.insert.return_value.execute.return_value = {'id': 'N1'}
+    return ev
+
+
+def test_aplicar_plan_estudio_no_sale_en_herramientas_ni_pasa_por_llamar(puente):
+    assert puente.herramientas(['aplicar_plan_estudio', 'leer_notas']) and \
+        [h['function']['name'] for h in puente.herramientas(['aplicar_plan_estudio', 'leer_notas'])] == ['leer_notas']
+    ev = calendario_con(puente, ['V1'])
+    r = puente.llamar('aplicar_plan_estudio', {'eventos': PROPUESTA, 'confirmado': True})
+    assert not r.ok and 'automática' in r.mensaje and not ev.delete.called and not ev.insert.called
+
+
+def test_aplicar_plan_confirmado_pasa_por_verificador_y_servidor(puente):
+    ev = calendario_con(puente, ['V1', 'V2'])
+    r = puente.aplicar_plan(PROPUESTA, huecos=HUECOS_PLAN, dias=7, zona='Europe/Madrid', confirmado=True, ahora=AHORA_PLAN)
+    assert r.ok and r.datos['aplicado'] is True and r.datos['borrados'] == 2
+    assert ev.insert.call_count == 1 and ev.delete.call_count == 2
+    assert all(c.kwargs['calendarId'] == 'CAL' for c in ev.delete.call_args_list)
+
+
+def test_aplicar_plan_sin_confirmar_con_eventos_previos_no_borra(puente):
+    ev = calendario_con(puente, ['V1'])
+    r = puente.aplicar_plan(PROPUESTA, huecos=HUECOS_PLAN, dias=7, zona='Europe/Madrid', ahora=AHORA_PLAN)
+    assert r.ok and r.datos == {'aplicado': False, 'existentes': 1, 'reintentos': 0}
+    assert not ev.insert.called and not ev.delete.called
+
+
+def test_aplicar_plan_con_propuesta_que_no_cabe_o_ya_empezada_no_llega_al_servidor(puente):
+    ev = calendario_con(puente, ['V1'])
+    ya_empezada = datetime(2026, 12, 2, 16, 30, tzinfo=ZoneInfo('Europe/Madrid'))
+    r = puente.aplicar_plan(PROPUESTA, huecos=HUECOS_PLAN, dias=7, zona='Europe/Madrid', confirmado=True, ahora=ya_empezada)
+    assert not r.ok and 'empieza en el pasado' in r.mensaje
+    fuera = [{'titulo': 'x', 'inicio': '2026-12-02T21:00:00+01:00', 'fin': '2026-12-02T22:00:00+01:00'}]
+    r = puente.aplicar_plan(fuera, huecos=HUECOS_PLAN, dias=7, zona='Europe/Madrid', confirmado=True, ahora=AHORA_PLAN)
+    assert not r.ok and 'no cabe en ningún hueco' in r.mensaje
+    assert not ev.insert.called and not ev.delete.called

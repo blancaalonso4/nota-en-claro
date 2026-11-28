@@ -62,7 +62,10 @@ class ResultadoAcciones:
     texto: str = ''
     error: str = ''
     vueltas: int = 0
-    eventos: list[dict] = field(default_factory=list)
+    eventos: list[dict] = field(default_factory=list)      # eventos ya creados en el calendario (el plan ya no los crea el agente)
+    plan_propuesto: list[dict] = field(default_factory=list)   # plan aprobado por el verificador, aún sin escribir en Google
+    huecos: list | None = None        # huecos libres con los que se calculó el plan (para volver a verificarlo al aplicarlo)
+    dias: int = 7
     informe: dict | None = None
     borrador: dict | None = None      # {'borrador_id','destinatario','asunto','cuerpo'}: la interfaz pide la confirmación
 
@@ -199,6 +202,16 @@ class AgenteAcciones:
                                      error='; '.join(errores), argumentos=resumen_argumentos(args))
                 return 'ERROR en las sesiones: ' + '; '.join(errores) + '. Corrige la llamada.', '', False
             nombre, args = 'crear_eventos_estudio', {'eventos': eventos}
+            v = verificar(nombre, args, ahora=self._ahora_fija, zona=self.zona, huecos=self._huecos, dias=self._dias)
+            if not v.ok:
+                self.traza.registrar('verificador', 'acciones', herramienta=nombre, permiso=permiso, fallo=True, error=str(v),
+                                     argumentos=resumen_argumentos(args))
+                return f'ERROR en los argumentos: {v}. Corrige la llamada.', '', False
+            # el agente PROPONE y el verificador aprueba; escribir en el calendario (y borrar el plan anterior) lo hace Python
+            res.plan_propuesto, res.huecos, res.dias = eventos, self._huecos, self._dias
+            self.traza.registrar('verificador', 'acciones', herramienta='planificar_sesiones', permiso=permiso,
+                                 argumentos=resumen_argumentos(args))
+            return json.dumps({'propuestas': len(eventos)}), '', True
         correo = self._contacto.correo_orientador
         v = verificar(nombre, args, ahora=self._ahora_fija, zona=self.zona, huecos=self._huecos, dias=self._dias,
                       orientador=correo)
@@ -253,13 +266,11 @@ class AgenteAcciones:
 
     # --- resumen final, compuesto en Python ---------------------------------------------------------------------------------
     def _cierre(self, intencion: str, res: ResultadoAcciones, texto_modelo: str) -> str:
+        if res.plan_propuesto:
+            return f'Te propongo {len(res.plan_propuesto)} sesiones:\n' + plan.lineas_eventos(res.plan_propuesto)
         if res.eventos:
-            lineas = []
-            for e in res.eventos:
-                a, b = datetime.fromisoformat(e['inicio']), datetime.fromisoformat(e['fin'])
-                lineas.append(f"- {_fecha_es(a)} {a:%H:%M}–{b:%H:%M} · {e['titulo']}")
             return (f'He creado {len(res.eventos)} sesiones de estudio en tu calendario «Nota en Claro · Estudio»:\n'
-                    + '\n'.join(lineas))
+                    + plan.lineas_eventos(res.eventos))
         if res.informe:
             return f"He guardado el informe en tu Drive: {res.informe.get('url') or '(sin enlace)'}"
         if res.borrador:

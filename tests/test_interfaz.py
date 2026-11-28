@@ -9,6 +9,7 @@ from streamlit.testing.v1 import AppTest
 
 from app import servicios
 from app.agentes import coordinador as co
+from app.agentes.plan_calendario import PREGUNTA_SUSTITUIR
 from app.tabla_notas import tabla_a_notas, tabla_vacia
 from app.agentes.puente_mcp import ResultadoLlamada
 from app.rag.config import ConfigRAG
@@ -45,9 +46,27 @@ class AccionesFalso:
                   borrador=borrador if intencion == 'correo_orientador' else None, eventos=[], informe=None)
 
 
+class AccionesPlan:
+    """Agente que solo propone el plan (no escribe nada en el calendario)."""
+
+    def ejecutar(self, intencion, peticion, dias, contacto=None):
+        propuesta = [{'titulo': 'Estudio: Física', 'inicio': '2026-12-02T16:00:00+01:00', 'fin': '2026-12-02T17:30:00+01:00'}]
+        return NS(ok=True, texto='Te propongo 1 sesiones:\n- miércoles 2 dic 16:00–17:30 · Estudio: Física', error='',
+                  borrador=None, eventos=[], informe=None, plan_propuesto=propuesta, huecos=[], dias=7)
+
+
 class PuenteFalso:
+    existentes = 0       # sesiones que «ya hay» en el calendario de la app
+
     def __init__(self):
-        self.enviados, self.cuerpos = [], []
+        self.enviados, self.cuerpos, self.plan_llamadas = [], [], []
+
+    def aplicar_plan(self, eventos, *, huecos, dias, zona, franja=None, confirmado=False, ahora=None):
+        self.plan_llamadas.append(confirmado)
+        if self.existentes and not confirmado:
+            return ResultadoLlamada(True, datos={'aplicado': False, 'existentes': self.existentes})
+        return ResultadoLlamada(True, datos={'aplicado': True, 'creados': [dict(e, id='E') for e in eventos], 'existentes': self.existentes,
+                                             'borrados': self.existentes, 'no_borrados': 0, 'calendario_id': 'CAL'})
 
     def enviar_correo_confirmado(self, borrador_id, orientador, cuerpo=None):
         self.enviados.append((borrador_id, orientador))
@@ -67,9 +86,10 @@ def app(monkeypatch):
     monkeypatch.setattr(servicios, 'estado_google', lambda: {'credenciales': True, 'tokens': {'drive': True, 'calendar': True, 'gmail': True},
                                                               'orientador': ORI, 'lista': True, 'hoja_notas_id': 'H1'})
 
-    def preparar(intencion):
+    def preparar(intencion, acciones=None):
         monkeypatch.setattr(servicios, 'crear_orquestador', lambda rec, traza: co.Orquestador(
-            co.Coordinador(traza, rec.cfg, Cliente(intencion)), traza, rag=rec.rag, acciones=AccionesFalso(), puente=rec.puente))
+            co.Coordinador(traza, rec.cfg, Cliente(intencion)), traza, rag=rec.rag, acciones=acciones or AccionesFalso(),
+            puente=rec.puente))
         at = AppTest.from_file(INTERFAZ, default_timeout=30)
         at.run()
         assert not at.exception
@@ -251,3 +271,59 @@ def test_el_aviso_de_falta_de_correo_sale_como_respuesta(app, monkeypatch):
                                                               'orientador': None, 'lista': True, 'hoja_notas_id': 'H1'})
     r = AgenteAcciones(None, None, cliente=object()).ejecutar('correo_orientador', 'escribe')
     assert not r.ok and r.error == MENSAJE_FALTA_CORREO and 'Correo de tu orientador' in r.error
+
+
+# --- plan de estudio: tarjeta para sustituir el plan anterior ---------------------------------------------------------------
+
+def pedir_plan(app, existentes):
+    app.puente.existentes = existentes
+    at = app('plan_estudio', acciones=AccionesPlan())
+    at.chat_input[0].set_value('Hazme un plan de estudio para esta semana').run()
+    assert not at.exception
+    return at
+
+
+def tiene_tarjeta_plan(at):
+    return any('Plan de estudio pendiente' in s.value for s in at.subheader)
+
+
+def test_calendario_vacio_crea_el_plan_sin_tarjeta(app):
+    at = pedir_plan(app, existentes=0)
+    assert not tiene_tarjeta_plan(at) and app.puente.plan_llamadas == [False]
+    assert any('He creado 1 sesiones' in t for t in textos(at))
+
+
+def test_con_plan_anterior_sale_la_tarjeta_con_la_pregunta_exacta(app):
+    at = pedir_plan(app, existentes=6)
+    assert tiene_tarjeta_plan(at) and app.puente.plan_llamadas == [False]       # solo se ha preguntado: nada borrado
+    pregunta = PREGUNTA_SUSTITUIR.format(n=6)
+    assert pregunta == ('Ya tienes un plan con 6 sesiones en el calendario «Nota en Claro · Estudio». '
+                        'Si lo sustituyes, se borrarán todas, también las que hayas editado. ¿Sustituirlo?')
+    assert any(m.value == pregunta for m in at.markdown)
+    assert any('Estudio: Física' in m.value for m in at.markdown if m.value.startswith('Plan propuesto'))
+    assert {b.label for b in at.button} >= {'Sustituir mi plan', 'Cancelar'}
+
+
+def test_cancelar_no_llama_a_aplicar_plan_con_confirmacion_y_lo_dice(app):
+    at = pedir_plan(app, existentes=6)
+    next(b for b in at.button if b.label == 'Cancelar').click().run()
+    assert app.puente.plan_llamadas == [False]                  # ninguna llamada confirmada: el plan anterior sigue igual
+    assert any('No he cambiado tu calendario: tu plan anterior sigue igual.' in t for t in textos(at))
+    assert not tiene_tarjeta_plan(at)
+
+
+def test_sustituir_mi_plan_llama_con_confirmado_y_lo_dice(app):
+    at = pedir_plan(app, existentes=6)
+    next(b for b in at.button if b.label == 'Sustituir mi plan').click().run()
+    assert app.puente.plan_llamadas == [False, True]
+    assert any('He creado 1 sesiones' in t and 'He borrado las 6 sesiones del plan anterior' in t for t in textos(at))
+    assert not tiene_tarjeta_plan(at)
+
+
+def test_pedir_otro_plan_reemplaza_la_propuesta_pendiente(app):
+    at = pedir_plan(app, existentes=6)
+    app.puente.existentes = 4
+    at.chat_input[0].set_value('Hazme otro plan').run()
+    assert [s for s in at.subheader if 'Plan de estudio pendiente' in s.value] and \
+        any(m.value == PREGUNTA_SUSTITUIR.format(n=4) for m in at.markdown)
+    assert not any(m.value == PREGUNTA_SUSTITUIR.format(n=6) for m in at.markdown if m.value.startswith('Ya tienes'))

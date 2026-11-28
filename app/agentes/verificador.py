@@ -25,6 +25,7 @@ CLAVES_PERMITIDAS: dict[str, set[str]] = {
     'listar_eventos': {'desde', 'hasta'},
     'huecos_libres': {'desde', 'hasta'},
     'crear_eventos_estudio': {'eventos'},
+    'aplicar_plan_estudio': {'eventos'},      # `confirmado` lo añade el puente tras verificar; el modelo nunca la llama
     'leer_correos_orientador': {'max'},      # el remitente lo pone Python (INTERNAS), nunca el modelo
     'crear_borrador': {'asunto', 'cuerpo'},
     'enviar_borrador': {'borrador_id', 'cuerpo', 'destinatario'},
@@ -176,7 +177,7 @@ def verificar(herramienta: str, args, *, ahora: datetime | None = None, zona: st
 
     if herramienta in ('listar_eventos', 'huecos_libres'):
         _rango(args, r, zona, ahora)
-    elif herramienta == 'crear_eventos_estudio':
+    elif herramienta in ('crear_eventos_estudio', 'aplicar_plan_estudio'):
         _eventos(args, r, zona, ahora, huecos, dias)
     elif herramienta == 'guardar_informe':
         t, c = args.get('titulo'), args.get('contenido')

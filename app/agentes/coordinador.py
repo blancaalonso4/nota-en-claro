@@ -18,7 +18,7 @@ import ollama
 
 from app.rag.config import ConfigRAG
 
-from . import errores_modelo
+from . import errores_modelo, plan_calendario
 from app.contacto import Contacto
 from .nota_admision import calcular_desde_diccionario
 from .traza import Traza
@@ -101,8 +101,9 @@ class Coordinador:
 class Orquestador:
     """Une coordinador y trabajadores. Cada trabajador se inyecta (en los tests, falsos)."""
 
-    def __init__(self, coordinador: Coordinador, traza: Traza, rag=None, acciones=None, puente=None):
+    def __init__(self, coordinador: Coordinador, traza: Traza, rag=None, acciones=None, puente=None, zona: str = 'Europe/Madrid'):
         self.coordinador, self.traza, self.rag, self.acciones, self.puente = coordinador, traza, rag, acciones, puente
+        self.zona = zona
 
     def atender(self, peticion: str, notas_manuales: dict | None = None, contacto_manual: dict | None = None):
         """Generador de eventos para la interfaz:
@@ -123,8 +124,23 @@ class Orquestador:
         else:
             extra = {'contacto': self._contacto(contacto_manual)} if d.intencion == 'correo_orientador' else {}
             r = self.acciones.ejecutar(d.intencion, peticion, d.dias, **extra)
-            yield {'resultado': {'intencion': d.intencion, 'texto': r.texto or r.error, 'error': not r.ok,
-                                 'borrador': r.borrador, 'eventos': r.eventos, 'informe': r.informe}}
+            resultado = {'intencion': d.intencion, 'texto': r.texto or r.error, 'error': not r.ok,
+                         'borrador': r.borrador, 'eventos': r.eventos, 'informe': r.informe}
+            propuesta = getattr(r, 'plan_propuesto', None)       # los falsos de los tests no lo tienen
+            if propuesta and self.puente is not None:
+                resultado.update(self._aplicar_plan(r, propuesta))
+            yield {'resultado': resultado}
+
+    def _aplicar_plan(self, r, propuesta: list[dict]) -> dict:
+        """El agente solo propone el plan: lo escribe Python. Calendario vacío -> se crea sin preguntar; con sesiones
+        anteriores queda pendiente de que el estudiante confirme la sustitución (no se toca nada hasta entonces)."""
+        huecos, dias = getattr(r, 'huecos', None), getattr(r, 'dias', 7)
+        ap = plan_calendario.aplicar(self.puente, self.traza, propuesta, confirmado=False, zona=self.zona, huecos=huecos,
+                                     dias=dias, agente='orquestador')
+        if ap.pendiente:
+            return {'texto': r.texto + '\n\n' + plan_calendario.PREGUNTA_SUSTITUIR.format(n=ap.existentes),
+                    'plan_pendiente': {'eventos': propuesta, 'huecos': huecos, 'dias': dias, 'existentes': ap.existentes}}
+        return {'texto': ap.texto, 'error': not ap.ok}
 
     def _contacto(self, manual: dict | None) -> Contacto:
         """Datos de contacto del estudiante: campos de la app primero y, para lo que falte, la pestaña «Datos» de su hoja.

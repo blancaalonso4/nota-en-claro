@@ -2,7 +2,9 @@
 
 Permisos mínimos: calendar.app.created (un calendario secundario «Nota en Claro · Estudio» creado por la app: aquí
 se lee y se escribe) y calendar.events.freebusy (del calendario principal solo se ve ocupado/libre, sin títulos).
-Herramientas: listar_eventos, huecos_libres, crear_eventos_estudio. Nunca se añaden invitados ni se borra nada.
+Herramientas: listar_eventos, huecos_libres, crear_eventos_estudio, aplicar_plan_estudio. Nunca se añaden invitados.
+Solo se borra en `aplicar_plan_estudio`, con confirmación del estudiante (`confirmado=True`) y solo en el calendario de
+la app: su id sale del estado guardado, nunca de un argumento, y jamás puede ser `primary`.
 """
 from __future__ import annotations
 
@@ -19,6 +21,7 @@ from .comun import ErrorGoogle, convertir_errores, limpiar_texto, llamar
 
 NOMBRE_CALENDARIO = 'Nota en Claro · Estudio'
 INICIO_DIA, FIN_DIA = 8, 22          # ventana de estudio de cada día (hora local)
+MAX_PAGINAS_EVENTOS = 20             # tope de páginas (de 2500 eventos) al listar el calendario de la app para sustituir el plan
 MIN_HUECO_MIN, MAX_HUECOS = 30, 30   # no se devuelven huecos de menos de 30 min ni más de 30 (ahorra tokens al modelo)
 PASO_MIN = 15                        # los huecos de hoy empiezan en el siguiente cuarto de hora estrictamente posterior a «ahora»
 DIAS_ES = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo']
@@ -134,12 +137,12 @@ def construir(api=None, estado_fn=comun.leer_estado, guardar_fn=comun.guardar_es
     @convertir_errores
     def huecos_libres(desde: str, hasta: str) -> dict:
         """Huecos libres para estudiar entre dos fechas, de 8:00 a 22:00, mirando el calendario principal (solo
-        ocupado/libre) y el de estudio. Devuelve intervalos ISO."""
+        ocupado/libre). Las sesiones del plan anterior no cuentan como ocupado. Devuelve intervalos ISO."""
         zona = comun.zona_horaria()
         d, h = a_fecha(desde, zona), a_fecha(hasta, zona)
-        cal_id, n0 = asegurar_calendario()
+        n0 = 0
         cuerpo = {'timeMin': d.isoformat(), 'timeMax': h.isoformat(), 'timeZone': zona,
-                  'items': [{'id': 'primary'}, {'id': cal_id}]}
+                  'items': [{'id': 'primary'}]}
         r, n = llamar(lambda: api.cal.freebusy().query(body=cuerpo).execute())
         ocupado = []
         for cal, datos in r.get('calendars', {}).items():
@@ -170,6 +173,70 @@ def construir(api=None, estado_fn=comun.leer_estado, guardar_fn=comun.guardar_es
             creados.append({'id': r.get('id', ''), 'titulo': c['summary'], 'inicio': c['start']['dateTime'],
                             'fin': c['end']['dateTime'], 'url': r.get('htmlLink', '')})
         return {'creados': creados, 'reintentos': total}
+
+    def ids_de_eventos(cal_id: str) -> tuple[list[str], int]:
+        """Ids de TODOS los eventos del calendario de la app (también los pasados y los editados a mano)."""
+        ids, total, token = [], 0, None
+        for _ in range(MAX_PAGINAS_EVENTOS):
+            kw = {'calendarId': cal_id, 'maxResults': 2500, 'fields': 'items(id),nextPageToken'}
+            if token:
+                kw['pageToken'] = token
+            r, n = llamar(lambda kw=kw: api.cal.events().list(**kw).execute())
+            total += n
+            ids += [e['id'] for e in r.get('items', []) if e.get('id')]
+            token = r.get('nextPageToken')
+            if not token:
+                return ids, total
+        raise ErrorGoogle('Tu calendario de estudio tiene demasiados eventos para sustituirlo de una vez; no he cambiado nada.')
+
+    @mcp.tool()
+    @convertir_errores
+    def aplicar_plan_estudio(eventos: list[Evento], confirmado: bool = False) -> dict:
+        """Sustituye el plan de estudio: crea los eventos nuevos y borra los antiguos del calendario «Nota en Claro · Estudio».
+        Solo la interfaz la llama, tras la confirmación del estudiante (confirmado=True) si ya había eventos."""
+        if not eventos or len(eventos) > MAX_EVENTOS:
+            raise ErrorGoogle(f'Hay que crear entre 1 y {MAX_EVENTOS} eventos por llamada.')
+        zona = comun.zona_horaria()
+        cuerpos = []
+        for ev in eventos:
+            try:
+                cuerpos.append(_cuerpo_evento(ev.model_dump(), zona))
+            except (KeyError, ValueError, TypeError) as e:
+                raise ErrorGoogle('Un evento tiene fechas no válidas (usa ISO 8601).', detalle=str(e)) from e
+        cal_id, total = asegurar_calendario()      # el id solo sale del estado guardado, nunca de un argumento
+        if not cal_id or cal_id == 'primary':
+            raise ErrorGoogle('No toco el calendario principal: el calendario de estudio no es válido.')
+        antiguos, n = ids_de_eventos(cal_id)
+        total += n
+        if antiguos and confirmado is not True:
+            return {'aplicado': False, 'existentes': len(antiguos), 'reintentos': total}   # sin tocar nada
+        creados = []
+        try:
+            for c in cuerpos:
+                r, n = llamar(lambda c=c: api.cal.events().insert(calendarId=cal_id, body=c, sendUpdates='none').execute())
+                total += n
+                creados.append({'id': r.get('id', ''), 'titulo': c['summary'], 'inicio': c['start']['dateTime'],
+                                'fin': c['end']['dateTime'], 'url': r.get('htmlLink', '')})
+        except ErrorGoogle as e:
+            for c in creados:       # marcha atrás: se quitan los nuevos y no se borra nada del plan anterior
+                try:
+                    api.cal.events().delete(calendarId=cal_id, eventId=c['id'], sendUpdates='none').execute()
+                except Exception:  # noqa: BLE001
+                    pass
+            raise ErrorGoogle('No he podido crear el plan nuevo; tu plan anterior sigue igual.', detalle=e.detalle or str(e)) from None
+        borrados = no_borrados = 0
+        for id_ in antiguos:
+            try:
+                _, n = llamar(lambda id_=id_: api.cal.events().delete(calendarId=cal_id, eventId=id_, sendUpdates='none').execute())
+                total += n
+                borrados += 1
+            except ErrorGoogle as e:
+                if comun._estado_http(e.__cause__) in (404, 410):   # ya no existía: cuenta como borrado
+                    borrados += 1
+                else:
+                    no_borrados += 1
+        return {'aplicado': True, 'creados': creados, 'existentes': len(antiguos), 'borrados': borrados,
+                'no_borrados': no_borrados, 'calendario_id': cal_id, 'reintentos': total}
 
     return mcp
 

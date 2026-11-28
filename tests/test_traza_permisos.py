@@ -129,3 +129,10 @@ def test_envolver_recorta_y_quita_caracteres_de_control():
 def test_envolver_sanea_el_nombre_de_la_fuente():
     cabecera = envolver_no_fiable('gm"ail><x', 'hola').splitlines()[0]
     assert cabecera == '<datos_no_fiables fuente="gmailx">'   # sin comillas ni «>» que rompan el delimitador
+
+
+def test_aplicar_plan_estudio_exige_confirmacion_y_no_se_ofrece_al_modelo():
+    assert permisos.permiso_de('aplicar_plan_estudio') == CONFIRMAR
+    assert all('aplicar_plan_estudio' not in hs for hs in permisos.HERRAMIENTAS_POR_INTENCION.values())
+    d = decidir('aplicar_plan_estudio', Contexto('plan_estudio'))
+    assert not d.permitida and d.permiso == CONFIRMAR

@@ -35,3 +35,31 @@ Cambios al aprobar el plan:
 > 1. Commit y push al terminar cada bloque del orden de construcción, sin esperar a que lo pida, con git status antes de cada commit.
 > 2. En el README, un apartado «Usar la parte de Google»: app de OAuth en modo prueba (solo usuarios de prueba); al profesor se le añade como usuario de prueba y se le envía credentials.json por un canal privado (nunca por git); sin Google funcionan la normativa y la calculadora con notas introducidas a mano. Añadir esa entrada manual de notas en la interfaz.
 > 3. Anotar en docs/decisiones.md que el refresh token caduca a los 7 días en modo prueba y que hay que reautorizar antes de la entrega y de la defensa.
+
+## 2026-11-28 · Sesión 7 · plan de mejoras (planificación)
+> Sesión 7. Lee CLAUDE.md y el código. Antes de tocar nada, quiero un plan de mejoras por fases (no escribas código hasta que lo apruebe). Problemas de uso detectados por el equipo:
+> - cada plan de estudio nuevo se **suma** al anterior en el calendario «Nota en Claro · Estudio» (la app no borra nada);
+> - el plan puede poner dos sesiones de la misma asignatura el mismo día, y a horas poco razonables (ventana fija 8:00-22:00, que incluye las horas de clase);
+> - no se ve de qué notas tira la calculadora, y la tabla a mano muestra puntos decimales y «None»;
+> - `.env.example` trae un correo y unos nombres de ejemplo que acaban usándose de verdad;
+> - falta una vista de notas, un «¿qué nota necesito?», una cuenta atrás a la PAU y un diseño más cuidado.
+
+Resultado: `docs/plan_mejoras_28nov.md` (fases 1A, 1B y 2). Cada fase la ejecuta otra sesión que solo dispone de ese documento, `CLAUDE.md` y el código.
+
+### Respuestas del equipo a las dudas del plan (28-11)
+1. Qué se borra: todos los eventos del calendario de la app, también los pasados; queda solo el plan nuevo.
+2. Orden: crear primero y borrar después, con marcha atrás si falla la creación; si queda algo sin borrar (`no_borrados > 0`), el mensaje lo dice.
+3. Calendario de la app vacío: se crea sin preguntar.
+4. Eventos editados a mano: se borran igual, pero la pregunta lo avisa con un texto exacto («…también las que hayas editado. ¿Sustituirlo?»).
+5. Franja: 16-21 entre semana y 10-20 el fin de semana, sin pausas; solo dura la sesión del navegador.
+6. Selector de fuente de notas: solo afecta a la calculadora, al panel de notas y a «¿Qué nota necesito?»; plan e informe leen siempre la hoja.
+7. «None» y coma: el ejecutor comprueba en el navegador en qué columnas salía «None»; la media también va con coma; en las notas se acepta el punto y se muestra siempre la coma.
+8. `.env.example`: se vacían `ORIENTADOR_EMAIL`, `NOMBRE_ESTUDIANTE` y `NOMBRE_ORIENTADOR`; sin nombres no hay borrador y nunca se firma con un nombre inventado.
+9. «¿Qué nota necesito?»: se mantiene el supuesto de la misma nota en todos los exámenes de la PAU, y la respuesta lo dice en una frase.
+10. Tests adaptados: se aceptan tal como se describen en el plan; el total no baja de 219.
+11. Traza: se guardan el id y la etiqueta del calendario.
+12. Diseño: tema sobrio, un color principal y buen contraste; se valida en la prueba manual.
+13. Cuenta atrás: la fecha dura solo la sesión del navegador.
+
+## 2026-11-28 · Sesión 7 · ejecución de la fase 1A
+> Lee CLAUDE.md y docs/plan_mejoras_28nov.md. Ejecuta SOLO la FASE 1A (puntos 1.0 y 1.1), tal como la describe el plan. Las «Decisiones del equipo (28-11)» del final ya están tomadas: no las vuelvas a preguntar. Un commit por punto, comprobando git status antes de cada uno; sin push; no ejecutar nada contra Google real; antes de cada commit, todos los tests en verde con `.\.venv\Scripts\python.exe -m pytest -q`. Si algo del plan no encaja con el código real, parar y explicarlo antes de improvisar.
